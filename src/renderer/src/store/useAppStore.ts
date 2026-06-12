@@ -3,8 +3,10 @@ import { showToast } from '../components/ui/Toast';
 import type { Member, Chore, LeaderboardEntry, Settings, WaterStats } from '../../../shared/types';
 import { safeInt } from '../../../shared/types';
 
-// Безопасный доступ к Electron API через preload
-const api = (window as Window & { electronAPI: any }).electronAPI;
+// Ленивый доступ к Electron API (чтобы не падать в tests без window)
+function getApi() {
+  return (globalThis as any).electronAPI || (typeof window !== 'undefined' ? (window as any).electronAPI : null);
+}
 
 type Page = 'dashboard' | 'chores' | 'water' | 'settings';
 
@@ -60,7 +62,7 @@ interface AppState {
 // Обёртка для IPC-вызовов с обработкой ошибок
 async function ipc<T>(channel: string, ...args: any[]): Promise<T> {
   try {
-    return await api.invoke(channel, ...args);
+    return await getApi().invoke(channel, ...args);
   } catch (err: any) {
     const msg = err?.message || 'Неизвестная ошибка';
     showToast(msg, 'error');
@@ -175,7 +177,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     await ipc<void>('add-water', amountMl);
     await get().loadTodayWater();
     const progress = get().todayWater / get().waterGoal;
-    api.invoke('update-tray-icon', progress);
+    getApi().invoke('update-tray-icon', progress);
   },
   loadWaterStats: async (days = 30) => {
     const waterStats = await ipc<WaterStats>('get-water-stats', days);
