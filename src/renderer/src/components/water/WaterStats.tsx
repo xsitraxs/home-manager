@@ -108,9 +108,12 @@ export function WaterStats() {
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={weekData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                  <XAxis dataKey="date" tick={{ fontSize: 12 }} />
-                  <YAxis tick={{ fontSize: 12 }} />
-                  <Tooltip />
+                  <XAxis dataKey="date" tick={{ fontSize: 12, fill: '#9CA3AF' }} />
+                  <YAxis tick={{ fontSize: 12, fill: '#9CA3AF' }} />
+                  <Tooltip
+                    contentStyle={{ backgroundColor: '#1F2937', border: '1px solid #374151', borderRadius: '8px' }}
+                    itemStyle={{ color: '#F3F4F6' }}
+                  />
                   <Bar dataKey="amount" fill="#4A90D9" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
@@ -139,9 +142,12 @@ export function WaterStats() {
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={weekData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                  <XAxis dataKey="date" tick={{ fontSize: 10 }} />
-                  <YAxis tick={{ fontSize: 10 }} />
-                  <Tooltip />
+                  <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#9CA3AF' }} />
+                  <YAxis tick={{ fontSize: 10, fill: '#9CA3AF' }} />
+                  <Tooltip
+                    contentStyle={{ backgroundColor: '#1F2937', border: '1px solid #374151', borderRadius: '8px' }}
+                    itemStyle={{ color: '#F3F4F6' }}
+                  />
                   <Bar dataKey="amount" fill="#4CAF50" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>

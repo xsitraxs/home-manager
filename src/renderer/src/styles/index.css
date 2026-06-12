@@ -70,6 +70,14 @@ body {
   stroke: #374151;
 }
 
+/* Recharts — прозрачный фон в тёмной теме */
+.recharts-wrapper {
+  background: transparent !important;
+}
+.recharts-surface {
+  background: transparent !important;
+}
+
 /* Тёмная тема по умолчанию */
 html {
   color-scheme: dark;
