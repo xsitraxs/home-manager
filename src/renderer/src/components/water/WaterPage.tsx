@@ -13,6 +13,7 @@ export function WaterPage() {
     addWater,
     showAddWaterModal,
     setShowAddWaterModal,
+    currentPage,
   } = useAppStore();
 
   const [showConfetti, setShowConfetti] = useState(false);
@@ -22,10 +23,10 @@ export function WaterPage() {
   const waterProgress = Math.min(1, todayWater / waterGoal);
   const remaining = Math.max(0, waterGoal - todayWater);
 
-  // Загрузка данных при монтировании
+  // Загрузка данных при монтировании и навигации
   useEffect(() => {
     loadTodayWater();
-  }, []);
+  }, [currentPage]);
 
   // Быстрые кнопки для добавления воды
   const quickAmounts = [

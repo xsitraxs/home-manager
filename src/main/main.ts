@@ -84,7 +84,11 @@ function createWindow(): void {
 
   mainWindow.on('close', (event) => {
     const settings = db.getSettings();
-    if (settings.minimizeToTray === 'true') {
+    // Shift+Click на закрытие = полное закрытие, иначе — в трей
+    if (settings.minimizeToTray === 'true' && !mainWindow?.isDestroyed()) {
+      // Проверяем зажат ли Shift через electronAPI недоступен —
+      // используем простой флаг: если окно было скрыто программно, не перехватываем
+      if ((mainWindow as any)._forceClose) return;
       event.preventDefault();
       mainWindow?.hide();
     }
@@ -214,6 +218,16 @@ function setupIPC(): void {
 
   ipcMain.handle('update-tray-icon', (_, progress: unknown) => {
     trayManager?.updateIcon(validateNumber(progress, 0, 1));
+  });
+
+  // Автозапуск — реальное включение/выключение в ОС
+  ipcMain.handle('set-auto-start', (_, enabled: unknown) => {
+    const isEnabled = Boolean(enabled);
+    app.setLoginItemSettings({
+      openAtLogin: isEnabled,
+      name: 'Home Manager',
+    });
+    db.setSetting('autoStart', String(isEnabled));
   });
 }
 

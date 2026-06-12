@@ -94,8 +94,6 @@ export function ChoreModal({ isOpen, onClose, chore }: ChoreModalProps) {
     { value: 30, label: 'Раз в месяц' },
   ];
 
-  if (!isOpen) return null;
-
   return (
     <AnimatePresence>
       {isOpen && (

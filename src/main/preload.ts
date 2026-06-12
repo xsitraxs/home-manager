@@ -8,7 +8,7 @@ const VALID_CHANNELS = {
     'get-chores', 'add-chore', 'update-chore', 'delete-chore',
     'complete-chore', 'update-chore-order', 'get-chore-log', 'get-leaderboard',
     'add-water', 'get-today-water', 'get-water-stats', 'reset-water-today',
-    'get-settings', 'set-setting', 'update-tray-icon',
+    'get-settings', 'set-setting', 'update-tray-icon', 'set-auto-start',
   ],
   receive: ['shortcut', 'water-added'],
 };

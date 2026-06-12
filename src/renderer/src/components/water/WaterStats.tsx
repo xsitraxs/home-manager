@@ -106,7 +106,7 @@ export function WaterStats() {
             </div>
             <div className="h-48">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={weekData} background={{ fill: 'transparent' }}>
+                <BarChart data={weekData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
                   <XAxis dataKey="date" tick={{ fontSize: 12, fill: '#9CA3AF' }} />
                   <YAxis tick={{ fontSize: 12, fill: '#9CA3AF' }} />
@@ -140,7 +140,7 @@ export function WaterStats() {
             {/* График за месяц */}
             <div className="h-48 mt-4">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={weekData} background={{ fill: 'transparent' }}>
+                <BarChart data={weekData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
                   <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#9CA3AF' }} />
                   <YAxis tick={{ fontSize: 10, fill: '#9CA3AF' }} />

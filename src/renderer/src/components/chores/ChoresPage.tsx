@@ -8,17 +8,17 @@ import { FamilyManager } from './FamilyManager';
 
 // Страница планировщика домашних дел
 export function ChoresPage() {
-  const { loadChores, loadMembers, loadLeaderboard, chores } = useAppStore();
+  const { loadChores, loadMembers, loadLeaderboard, chores, currentPage } = useAppStore();
   const [showModal, setShowModal] = useState(false);
   const [editingChore, setEditingChore] = useState<any>(null);
   const [activeTab, setActiveTab] = useState<'chores' | 'leaderboard' | 'family'>('chores');
 
-  // Загрузка данных при монтировании
+  // Загрузка данных при монтировании и навигации
   useEffect(() => {
     loadMembers();
     loadChores();
     loadLeaderboard();
-  }, []);
+  }, [currentPage]);
 
   // Обработка горячей клавиши Ctrl+N
   useEffect(() => {

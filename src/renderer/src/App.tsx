@@ -54,11 +54,20 @@ export default function App() {
         case 'go-settings':
           setCurrentPage('settings');
           break;
+        case 'refresh-water':
+          useAppStore.getState().loadTodayWater();
+          break;
       }
+    });
+
+    // Обновление UI при добавлении воды через трей
+    api.on('water-added', () => {
+      useAppStore.getState().loadTodayWater();
     });
 
     return () => {
       api.removeAllListeners('shortcut');
+      api.removeAllListeners('water-added');
     };
   }, [setCurrentPage]);
 

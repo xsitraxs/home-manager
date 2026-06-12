@@ -12,13 +12,14 @@ export function Dashboard() {
     loadChores,
     loadLeaderboard,
     setCurrentPage,
+    currentPage,
   } = useAppStore();
 
   useEffect(() => {
     loadTodayWater();
     loadChores();
     loadLeaderboard();
-  }, []);
+  }, [currentPage]);
 
   const waterProgress = Math.min(1, todayWater / waterGoal);
   const today = new Date().toISOString().split('T')[0];

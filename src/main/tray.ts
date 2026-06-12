@@ -79,6 +79,7 @@ export class TrayManager {
       {
         label: 'Выход',
         click: () => {
+          (this.mainWindow as any)._forceClose = true;
           this.mainWindow.destroy();
           app.quit();
         },

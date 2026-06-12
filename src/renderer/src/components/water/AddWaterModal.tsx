@@ -52,8 +52,6 @@ export function AddWaterModal() {
     }
   };
 
-  if (!showAddWaterModal) return null;
-
   return (
     <AnimatePresence>
       {showAddWaterModal && (

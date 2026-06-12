@@ -21,8 +21,6 @@ export function ConfirmDialog({ isOpen, title, message, onConfirm, onCancel }: C
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onCancel]);
 
-  if (!isOpen) return null;
-
   return (
     <AnimatePresence>
       {isOpen && (

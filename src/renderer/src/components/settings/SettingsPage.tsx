@@ -4,7 +4,8 @@ import { useAppStore } from '../../store/useAppStore';
 
 // Страница настроек приложения
 export function SettingsPage() {
-  const { settings, loadSettings, setSetting, theme, setTheme, loadMembers, members } = useAppStore();
+  const { settings, loadSettings, setSetting, theme, setTheme, loadMembers, members, currentPage } = useAppStore();
+  const api = (window as any).electronAPI;
   const [waterGoal, setWaterGoal] = useState(2000);
   const [reminderInterval, setReminderInterval] = useState(60);
   const [startHour, setStartHour] = useState(8);
@@ -16,7 +17,7 @@ export function SettingsPage() {
   useEffect(() => {
     loadSettings();
     loadMembers();
-  }, []);
+  }, [currentPage]);
 
   // Синхронизация с хранилищем (только при реальном изменении settings)
   useEffect(() => {
@@ -204,7 +205,11 @@ export function SettingsPage() {
             <p className="text-xs text-gray-500">Запускать при входе в систему</p>
           </div>
           <button
-            onClick={() => setAutoStart(!autoStart)}
+            onClick={() => {
+              const newVal = !autoStart;
+              setAutoStart(newVal);
+              api?.invoke('set-auto-start', newVal);
+            }}
             role="switch"
             aria-checked={autoStart}
             aria-label="Автозапуск"

@@ -129,16 +129,19 @@ export class DatabaseManager {
     const chore = this.db.prepare('SELECT * FROM chores WHERE id = ?').get(choreId) as Chore;
     if (!chore) return;
 
-    // Записываем в лог выполнения
-    this.db.prepare(
-      'INSERT INTO chore_log (chore_id, done_by, done_at) VALUES (?, ?, datetime(\'now\'))'
-    ).run(choreId, doneBy);
-
-    // Пересчитываем следующую дату
     const nextDue = this.calcNextDue(chore.frequency_days);
-    this.db.prepare(
-      'UPDATE chores SET last_done = datetime(\'now\'), next_due = ? WHERE id = ?'
-    ).run(nextDue, choreId);
+
+    // Транзакция: INSERT + UPDATE атомарно
+    const tx = this.db.transaction(() => {
+      this.db.prepare(
+        'INSERT INTO chore_log (chore_id, done_by, done_at) VALUES (?, ?, datetime(\'now\'))'
+      ).run(choreId, doneBy);
+
+      this.db.prepare(
+        'UPDATE chores SET last_done = datetime(\'now\'), next_due = ? WHERE id = ?'
+      ).run(nextDue, choreId);
+    });
+    tx();
   }
 
   updateChoreOrder(orders: { id: number; sort_order: number }[]): void {
@@ -258,10 +261,13 @@ export class DatabaseManager {
     this.db.close();
   }
 
-  // Вычисление следующей даты выполнения дела
+  // Вычисление следующей даты выполнения дела (локальная дата, не UTC)
   private calcNextDue(frequencyDays: number): string {
     const now = new Date();
     now.setDate(now.getDate() + frequencyDays);
-    return now.toISOString().split('T')[0];
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, '0');
+    const d = String(now.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
   }
 }
