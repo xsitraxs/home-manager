@@ -70,12 +70,16 @@ body {
   stroke: #374151;
 }
 
-/* Recharts — прозрачный фон в тёмной теме */
-.recharts-wrapper {
+/* Recharts — прозрачный фон */
+.dark .recharts-wrapper {
   background: transparent !important;
 }
-.recharts-surface {
+.dark .recharts-wrapper svg {
   background: transparent !important;
+}
+/* Первый rect в SVG recharts — это фон графика, делаем прозрачным */
+.dark .recharts-wrapper svg > rect:first-child {
+  fill: transparent !important;
 }
 
 /* Тёмная тема по умолчанию */
