@@ -10,9 +10,11 @@
     "build": "npm run build:main && npm run build:renderer",
     "package": "npm run build && electron-builder",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage"
+    "test": "npm run rebuild:node && vitest run",
+    "test:watch": "npm run rebuild:node && vitest",
+    "test:coverage": "npm run rebuild:node && vitest run --coverage",
+    "rebuild:node": "npm rebuild better-sqlite3",
+    "rebuild:electron": "npx @electron/rebuild -f -w better-sqlite3"
   },
   "dependencies": {
     "better-sqlite3": "^12.10.0",
@@ -29,7 +31,7 @@
     "@vitejs/plugin-react": "^5.0.0",
     "autoprefixer": "^10.4.0",
     "concurrently": "^8.2.0",
-    "electron": "^35.0.0",
+    "electron": "^35.7.5",
     "electron-builder": "^26.15.3",
     "jsdom": "^29.1.1",
     "postcss": "^8.4.0",
