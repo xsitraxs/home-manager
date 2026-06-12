@@ -8,3 +8,5 @@ release/
 .DS_Store
 Thumbs.db
 src/shared/*.js
+src/main/*.js
+src/main/__tests__/*.js
