@@ -79,7 +79,7 @@ export function Dashboard() {
                   fill="none"
                   stroke="currentColor"
                   strokeWidth="8"
-                  className="text-gray-200 dark:text-gray-700"
+                  className="circle-bg"
                 />
                 <motion.circle
                   cx="50"
@@ -137,7 +137,7 @@ export function Dashboard() {
               todayChores.slice(0, 5).map((chore) => (
                 <div
                   key={chore.id}
-                  className="flex items-center gap-3 p-2 rounded-lg bg-gray-50 dark:bg-gray-750"
+                  className="flex items-center gap-3 p-2 rounded-lg bg-gray-50 dark:bg-gray-800"
                 >
                   <div
                     className={`w-3 h-3 rounded-full ${

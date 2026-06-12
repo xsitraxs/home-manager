@@ -4,7 +4,7 @@
   "description": "Планировщик домашних дел и трекер воды",
   "main": "dist/main/main.js",
   "scripts": {
-    "dev": "concurrently \"tsc -p tsconfig.main.json\" \"vite\" \"wait-on dist/main/main.js && electron .\"",
+    "dev": "concurrently \"tsc -p tsconfig.main.json -w\" \"vite\" \"wait-on dist/main/main.js && cross-env NODE_ENV=development electron .\"",
     "build:main": "tsc -p tsconfig.main.json",
     "build:renderer": "vite build",
     "build": "npm run build:main && npm run build:renderer",
@@ -18,6 +18,7 @@
   },
   "dependencies": {
     "better-sqlite3": "^12.10.0",
+    "electron-updater": "^6.8.9",
     "framer-motion": "^11.0.0",
     "recharts": "^2.12.0",
     "zustand": "^4.5.0"
@@ -31,6 +32,7 @@
     "@vitejs/plugin-react": "^5.0.0",
     "autoprefixer": "^10.4.0",
     "concurrently": "^8.2.0",
+    "cross-env": "^10.1.0",
     "electron": "^35.7.5",
     "electron-builder": "^26.15.3",
     "jsdom": "^29.1.1",
@@ -46,6 +48,11 @@
   "build": {
     "appId": "com.homemanager.app",
     "productName": "Home Manager",
+    "publish": {
+      "provider": "github",
+      "owner": "xsitraxs",
+      "repo": "home-manager"
+    },
     "directories": {
       "output": "release"
     },

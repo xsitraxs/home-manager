@@ -12,7 +12,6 @@
 body {
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
   overflow: hidden;
-  user-select: none;
 }
 
 /* Стили для кастомного заголовка окна */
@@ -61,6 +60,14 @@ body {
 /* Карточки */
 .card {
   @apply bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-100 dark:border-gray-700;
+}
+
+/* SVG-круги для прогресс-баров */
+.circle-bg {
+  stroke: #e5e7eb;
+}
+.dark .circle-bg {
+  stroke: #374151;
 }
 
 /* Тёмная тема по умолчанию */

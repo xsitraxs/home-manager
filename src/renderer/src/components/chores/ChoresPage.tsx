@@ -58,12 +58,37 @@ export function ChoresPage() {
             {todayChores.length} дел на сегодня
           </p>
         </div>
-        <button
-          onClick={() => { setEditingChore(null); setShowModal(true); }}
-          className="btn-primary"
-        >
-          + Добавить дело
-        </button>
+        <div className="flex gap-2">
+          {chores.length > 0 && (
+            <button
+              onClick={() => {
+                const rows = [['Название', 'Периодичность (дн)', 'Назначено', 'Следующее выполнение', 'Статус']];
+                const statusMap: Record<string, string> = { overdue: 'Просрочено', today: 'Сегодня', future: 'Не скоро' };
+                for (const c of chores) {
+                  const status = c.next_due < today ? 'overdue' : c.next_due === today ? 'today' : 'future';
+                  rows.push([c.title, String(c.frequency_days), c.assigned_name || '—', c.next_due, statusMap[status]]);
+                }
+                const csv = rows.map(r => r.join(',')).join('\n');
+                const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'chores.csv';
+                a.click();
+                URL.revokeObjectURL(url);
+              }}
+              className="px-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-sm font-medium transition-colors"
+            >
+              📥 CSV
+            </button>
+          )}
+          <button
+            onClick={() => { setEditingChore(null); setShowModal(true); }}
+            className="btn-primary"
+          >
+            + Добавить дело
+          </button>
+        </div>
       </div>
 
       {/* Табы */}

@@ -46,7 +46,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
       </div>
 
       {/* Навигация */}
-      <nav className="flex-1 p-2 space-y-1">
+      <nav className="flex-1 p-2 space-y-1" aria-label="Навигация">
         {navItems.map((item) => {
           const isActive = currentPage === item.id;
           return (
@@ -76,7 +76,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
 
       {/* Мини-виджет воды в сайдбаре */}
       {!collapsed && (
-        <div className="p-3 m-2 rounded-lg bg-gray-50 dark:bg-gray-750">
+        <div className="p-3 m-2 rounded-lg bg-gray-50 dark:bg-gray-800">
           <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Вода сегодня</div>
           <div className="h-2 bg-gray-200 dark:bg-gray-600 rounded-full overflow-hidden">
             <motion.div

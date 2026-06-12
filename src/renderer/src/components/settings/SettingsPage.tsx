@@ -147,6 +147,9 @@ export function SettingsPage() {
           <span className="text-sm font-medium">Тёмная тема</span>
           <button
             onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+            role="switch"
+            aria-checked={theme === 'dark'}
+            aria-label="Тёмная тема"
             className={`relative w-12 h-6 rounded-full transition-colors ${
               theme === 'dark' ? 'bg-primary' : 'bg-gray-300'
             }`}
@@ -179,6 +182,9 @@ export function SettingsPage() {
           </div>
           <button
             onClick={() => setMinimizeToTray(!minimizeToTray)}
+            role="switch"
+            aria-checked={minimizeToTray}
+            aria-label="Сворачивать в трей"
             className={`relative w-12 h-6 rounded-full transition-colors ${
               minimizeToTray ? 'bg-primary' : 'bg-gray-300'
             }`}
@@ -199,6 +205,9 @@ export function SettingsPage() {
           </div>
           <button
             onClick={() => setAutoStart(!autoStart)}
+            role="switch"
+            aria-checked={autoStart}
+            aria-label="Автозапуск"
             className={`relative w-12 h-6 rounded-full transition-colors ${
               autoStart ? 'bg-primary' : 'bg-gray-300'
             }`}

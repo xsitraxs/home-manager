@@ -3,6 +3,18 @@ import { motion } from 'framer-motion';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { useAppStore } from '../../store/useAppStore';
 
+// Экспорт данных в CSV
+function downloadCSV(filename: string, rows: string[][]): void {
+  const csv = rows.map(r => r.join(',')).join('\n');
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 // Статистика потребления воды
 export function WaterStats() {
   const { loadWaterStats, waterStats, waterGoal } = useAppStore();
@@ -46,6 +58,17 @@ export function WaterStats() {
             {tab.label}
           </button>
         ))}
+        {waterStats && waterStats.daily.length > 0 && (
+          <button
+            onClick={() => {
+              const rows = [['Дата', 'Выпито (мл)'], ...waterStats.daily.map(d => [d.date, String(d.total_ml)])];
+              downloadCSV(`water-stats-${activeTab}.csv`, rows);
+            }}
+            className="px-4 py-1.5 rounded-lg text-sm font-medium bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+          >
+            📥 CSV
+          </button>
+        )}
       </div>
 
       {/* Содержимое */}

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAppStore } from '../../store/useAppStore';
 
@@ -15,6 +15,40 @@ export function ChoreModal({ isOpen, onClose, chore }: ChoreModalProps) {
   const [frequencyDays, setFrequencyDays] = useState(1);
   const [assignedTo, setAssignedTo] = useState<number | null>(null);
   const [useRotation, setUseRotation] = useState(false);
+  const modalRef = useRef<HTMLDivElement>(null);
+  const titleInputRef = useRef<HTMLInputElement>(null);
+
+  // Escape закрывает модалку
+  const handleKeyDown = useCallback((e: KeyboardEvent) => {
+    if (e.key === 'Escape') onClose();
+  }, [onClose]);
+
+  useEffect(() => {
+    if (isOpen) {
+      document.addEventListener('keydown', handleKeyDown);
+      // Фокус на первое поле ввода
+      setTimeout(() => titleInputRef.current?.focus(), 100);
+    }
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, handleKeyDown]);
+
+  // Фокус-трэп: Tab циклится внутри модалки
+  const handleTrapFocus = (e: React.KeyboardEvent) => {
+    if (e.key !== 'Tab' || !modalRef.current) return;
+    const focusable = modalRef.current.querySelectorAll<HTMLElement>(
+      'input, select, button, [tabindex]:not([tabindex="-1"])'
+    );
+    if (focusable.length === 0) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (e.shiftKey && document.activeElement === first) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && document.activeElement === last) {
+      e.preventDefault();
+      first.focus();
+    }
+  };
 
   useEffect(() => {
     if (chore) {
@@ -80,8 +114,13 @@ export function ChoreModal({ isOpen, onClose, chore }: ChoreModalProps) {
             className="fixed inset-0 z-50 flex items-center justify-center p-4"
           >
             <div
+              ref={modalRef}
+              onKeyDown={handleTrapFocus}
               className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-md"
               onClick={(e) => e.stopPropagation()}
+              role="dialog"
+              aria-modal="true"
+              aria-label={chore ? 'Редактировать дело' : 'Новое дело'}
             >
               <div className="p-6 pb-0">
                 <h2 className="text-xl font-bold">
@@ -93,6 +132,7 @@ export function ChoreModal({ isOpen, onClose, chore }: ChoreModalProps) {
                 <div>
                   <label className="block text-sm font-medium mb-1">Название</label>
                   <input
+                    ref={titleInputRef}
                     type="text"
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}

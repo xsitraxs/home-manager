@@ -1,5 +1,6 @@
-import { app, BrowserWindow, ipcMain, Notification, Tray, Menu, nativeImage, globalShortcut, session } from 'electron';
+import { app, BrowserWindow, ipcMain, Notification, Tray, Menu, nativeImage, globalShortcut, session, crashReporter } from 'electron';
 import path from 'path';
+import { autoUpdater } from 'electron-updater';
 import { DatabaseManager } from './database';
 import { TrayManager } from './tray';
 import { NotificationManager } from './notifications';
@@ -9,6 +10,13 @@ let mainWindow: BrowserWindow | null = null;
 let trayManager: TrayManager | null = null;
 let notificationManager: NotificationManager | null = null;
 const db = new DatabaseManager();
+
+// Crash reporting — локально в crashDumps
+crashReporter.start({
+  productName: 'Home Manager',
+  submitURL: '',
+  uploadToServer: false,
+});
 
 // Обработчики необработанных ошибок
 process.on('uncaughtException', (err) => {
@@ -224,6 +232,11 @@ if (!gotLock) {
     if (mainWindow) {
       initTray();
       initNotifications();
+    }
+
+    // Проверка обновлений (только в production)
+    if (process.env.NODE_ENV !== 'development') {
+      autoUpdater.checkForUpdatesAndNotify().catch(() => {});
     }
 
     app.on('activate', () => {

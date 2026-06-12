@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAppStore } from '../../store/useAppStore';
 
@@ -6,6 +6,42 @@ import { useAppStore } from '../../store/useAppStore';
 export function AddWaterModal() {
   const { showAddWaterModal, setShowAddWaterModal, addWater } = useAppStore();
   const [amount, setAmount] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
+  const modalRef = useRef<HTMLDivElement>(null);
+
+  const handleClose = useCallback(() => {
+    setAmount('');
+    setShowAddWaterModal(false);
+  }, [setShowAddWaterModal]);
+
+  // Escape закрывает модалку
+  useEffect(() => {
+    if (!showAddWaterModal) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') handleClose();
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    setTimeout(() => inputRef.current?.focus(), 100);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [showAddWaterModal, handleClose]);
+
+  // Фокус-трэп
+  const handleTrapFocus = (e: React.KeyboardEvent) => {
+    if (e.key !== 'Tab' || !modalRef.current) return;
+    const focusable = modalRef.current.querySelectorAll<HTMLElement>(
+      'input, button, [tabindex]:not([tabindex="-1"])'
+    );
+    if (focusable.length === 0) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (e.shiftKey && document.activeElement === first) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && document.activeElement === last) {
+      e.preventDefault();
+      first.focus();
+    }
+  };
 
   const handleSubmit = async () => {
     const ml = parseInt(amount);
@@ -14,11 +50,6 @@ export function AddWaterModal() {
       setAmount('');
       setShowAddWaterModal(false);
     }
-  };
-
-  const handleClose = () => {
-    setAmount('');
-    setShowAddWaterModal(false);
   };
 
   if (!showAddWaterModal) return null;
@@ -44,8 +75,13 @@ export function AddWaterModal() {
             className="fixed inset-0 z-50 flex items-center justify-center p-4"
           >
             <div
+              ref={modalRef}
+              onKeyDown={handleTrapFocus}
               className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-sm"
               onClick={(e) => e.stopPropagation()}
+              role="dialog"
+              aria-modal="true"
+              aria-label="Свой объём воды"
             >
               <div className="p-6">
                 <h2 className="text-xl font-bold text-center mb-6">
@@ -55,6 +91,7 @@ export function AddWaterModal() {
                 {/* Поле ввода */}
                 <div className="relative mb-6">
                   <input
+                    ref={inputRef}
                     type="number"
                     value={amount}
                     onChange={(e) => setAmount(e.target.value)}

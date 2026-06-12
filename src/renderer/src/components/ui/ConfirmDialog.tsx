@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface ConfirmDialogProps {
@@ -11,6 +11,16 @@ interface ConfirmDialogProps {
 
 // Модальное окно подтверждения действия
 export function ConfirmDialog({ isOpen, title, message, onConfirm, onCancel }: ConfirmDialogProps) {
+  // Escape закрывает диалог
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onCancel();
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onCancel]);
+
   if (!isOpen) return null;
 
   return (
@@ -33,9 +43,13 @@ export function ConfirmDialog({ isOpen, title, message, onConfirm, onCancel }: C
             <div
               className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-sm p-6"
               onClick={(e) => e.stopPropagation()}
+              role="alertdialog"
+              aria-modal="true"
+              aria-labelledby="confirm-title"
+              aria-describedby="confirm-message"
             >
-              <h3 className="text-lg font-bold mb-2">{title}</h3>
-              <p className="text-gray-600 dark:text-gray-400 text-sm mb-6">{message}</p>
+              <h3 id="confirm-title" className="text-lg font-bold mb-2">{title}</h3>
+              <p id="confirm-message" className="text-gray-600 dark:text-gray-400 text-sm mb-6">{message}</p>
               <div className="flex gap-3">
                 <button
                   onClick={onCancel}
