@@ -2,6 +2,7 @@ import React, { Suspense, useEffect, useState } from 'react';
 import { Sidebar } from './components/ui/Sidebar';
 import { useAppStore } from './store/useAppStore';
 import { ToastContainer } from './components/ui/Toast';
+import { ErrorBoundary } from './components/ui/ErrorBoundary';
 
 // Lazy-loading страниц для code splitting
 const Dashboard = React.lazy(() => import('./components/dashboard/Dashboard').then(m => ({ default: m.Dashboard })));
@@ -102,9 +103,11 @@ export default function App() {
 
         {/* Основной контент */}
         <main className="flex-1 overflow-auto p-6">
-          <Suspense fallback={<LoadingSpinner />}>
-            {renderPage()}
-          </Suspense>
+          <ErrorBoundary>
+            <Suspense fallback={<LoadingSpinner />}>
+              {renderPage()}
+            </Suspense>
+          </ErrorBoundary>
         </main>
       </div>
     </div>
