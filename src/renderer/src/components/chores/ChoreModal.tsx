@@ -5,7 +5,7 @@ import { useAppStore } from '../../store/useAppStore';
 interface ChoreModalProps {
   isOpen: boolean;
   onClose: () => void;
-  chore?: any; // Если передано — режим редактирования
+  chore?: any;
 }
 
 // Модальное окно добавления/редактирования дела
@@ -14,34 +14,43 @@ export function ChoreModal({ isOpen, onClose, chore }: ChoreModalProps) {
   const [title, setTitle] = useState('');
   const [frequencyDays, setFrequencyDays] = useState(1);
   const [assignedTo, setAssignedTo] = useState<number | null>(null);
+  const [useRotation, setUseRotation] = useState(false);
 
-  // Заполнение формы при редактировании
   useEffect(() => {
     if (chore) {
       setTitle(chore.title);
       setFrequencyDays(chore.frequency_days);
       setAssignedTo(chore.assigned_to);
+      setUseRotation(false);
     } else {
       setTitle('');
       setFrequencyDays(1);
       setAssignedTo(null);
+      setUseRotation(false);
     }
   }, [chore, isOpen]);
 
-  // Обработка отправки формы
+  const getRotatedMember = (): number | null => {
+    if (members.length === 0) return null;
+    const maxId = Math.max(...members.map((m) => m.id));
+    const nextIdx = members.findIndex((m) => m.id === maxId) + 1;
+    return members[nextIdx % members.length].id;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) return;
 
+    const finalAssigned = useRotation ? getRotatedMember() : assignedTo;
+
     if (chore) {
-      await updateChore(chore.id, title, frequencyDays, assignedTo);
+      await updateChore(chore.id, title, frequencyDays, finalAssigned);
     } else {
-      await addChore(title, frequencyDays, assignedTo);
+      await addChore(title, frequencyDays, finalAssigned);
     }
     onClose();
   };
 
-  // Варианты периодичности
   const frequencyOptions = [
     { value: 1, label: 'Каждый день' },
     { value: 2, label: 'Раз в 2 дня' },
@@ -57,7 +66,6 @@ export function ChoreModal({ isOpen, onClose, chore }: ChoreModalProps) {
     <AnimatePresence>
       {isOpen && (
         <>
-          {/* Затемнённый фон */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -65,25 +73,23 @@ export function ChoreModal({ isOpen, onClose, chore }: ChoreModalProps) {
             onClick={onClose}
             className="fixed inset-0 bg-black/50 z-40"
           />
-
-          {/* Модальное окно */}
           <motion.div
             initial={{ opacity: 0, scale: 0.9, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
             className="fixed inset-0 z-50 flex items-center justify-center p-4"
           >
-            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-md" onClick={(e) => e.stopPropagation()}>
-              {/* Заголовок */}
+            <div
+              className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-md"
+              onClick={(e) => e.stopPropagation()}
+            >
               <div className="p-6 pb-0">
                 <h2 className="text-xl font-bold">
                   {chore ? 'Редактировать дело' : 'Новое дело'}
                 </h2>
               </div>
 
-              {/* Форма */}
               <form onSubmit={handleSubmit} className="p-6 space-y-4">
-                {/* Название */}
                 <div>
                   <label className="block text-sm font-medium mb-1">Название</label>
                   <input
@@ -96,7 +102,6 @@ export function ChoreModal({ isOpen, onClose, chore }: ChoreModalProps) {
                   />
                 </div>
 
-                {/* Периодичность */}
                 <div>
                   <label className="block text-sm font-medium mb-1">Периодичность</label>
                   <select
@@ -105,34 +110,36 @@ export function ChoreModal({ isOpen, onClose, chore }: ChoreModalProps) {
                     className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-primary"
                   >
                     {frequencyOptions.map((opt) => (
-                      <option key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </option>
+                      <option key={opt.value} value={opt.value}>{opt.label}</option>
                     ))}
                   </select>
                 </div>
 
-                {/* Назначение */}
                 {members.length > 0 && (
                   <div>
                     <label className="block text-sm font-medium mb-1">Назначить</label>
                     <select
-                      value={assignedTo || ''}
-                      onChange={(e) => setAssignedTo(e.target.value ? Number(e.target.value) : null)}
+                      value={useRotation ? 'rotate' : (assignedTo || '')}
+                      onChange={(e) => {
+                        if (e.target.value === 'rotate') {
+                          setUseRotation(true);
+                          setAssignedTo(null);
+                        } else {
+                          setUseRotation(false);
+                          setAssignedTo(e.target.value ? Number(e.target.value) : null);
+                        }
+                      }}
                       className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-primary"
                     >
                       <option value="">Без назначения</option>
                       {members.map((member) => (
-                        <option key={member.id} value={member.id}>
-                          {member.name}
-                        </option>
+                        <option key={member.id} value={member.id}>{member.name}</option>
                       ))}
                       <option value="rotate">🔄 Автоматическая ротация</option>
                     </select>
                   </div>
                 )}
 
-                {/* Кнопки */}
                 <div className="flex gap-3 pt-2">
                   <button
                     type="button"

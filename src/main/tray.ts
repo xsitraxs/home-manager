@@ -1,6 +1,32 @@
-import { Tray, Menu, BrowserWindow, nativeImage } from 'electron';
-import path from 'path';
+import { Tray, Menu, BrowserWindow, nativeImage, app } from 'electron';
 import { DatabaseManager } from './database';
+
+// Создание простой иконки для трея (16x16 px)
+function createTrayIcon(): Electron.NativeImage {
+  // Создаём 16x16 иконку программно
+  const size = 16;
+  const canvas = Buffer.alloc(size * size * 4);
+
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const idx = (y * size + x) * 4;
+      // Круглая капля воды — синяя
+      const cx = x - size / 2 + 0.5;
+      const cy = y - size / 2 + 0.5;
+      const dist = Math.sqrt(cx * cx + cy * cy);
+      if (dist < 5) {
+        canvas[idx] = 74;     // R
+        canvas[idx + 1] = 144; // G
+        canvas[idx + 2] = 217; // B
+        canvas[idx + 3] = 255; // A
+      } else {
+        canvas[idx + 3] = 0; // transparent
+      }
+    }
+  }
+
+  return nativeImage.createFromBuffer(canvas, { width: size, height: size });
+}
 
 // Менеджер системного трея
 export class TrayManager {
@@ -13,15 +39,12 @@ export class TrayManager {
     this.db = db;
   }
 
-  // Создание иконки в трее
   createTray(): void {
-    // Создаём простую иконку (в реальном приложении — файлы иконок)
-    const icon = nativeImage.createEmpty();
+    const icon = createTrayIcon();
     this.tray = new Tray(icon);
     this.tray.setToolTip('Home Manager');
     this.updateTrayMenu();
 
-    // Клик по трею — показать окно
     this.tray.on('click', () => {
       if (this.mainWindow.isVisible()) {
         this.mainWindow.hide();
@@ -32,7 +55,6 @@ export class TrayManager {
     });
   }
 
-  // Обновление контекстного меню трея
   updateTrayMenu(): void {
     if (!this.tray) return;
 
@@ -58,7 +80,7 @@ export class TrayManager {
         label: 'Выход',
         click: () => {
           this.mainWindow.destroy();
-          process.exit(0);
+          app.quit();
         },
       },
     ]);
@@ -66,18 +88,10 @@ export class TrayManager {
     this.tray.setContextMenu(contextMenu);
   }
 
-  // Обновление иконки в зависимости от прогресса воды
   updateIcon(progress: number): void {
     if (!this.tray) return;
-
-    // В реальном приложении здесь будут разные иконки
-    // Для примера создаём простую иконку с цветом
-    const canvas = nativeImage.createEmpty();
-
-    // Обновляем тултип
     const percent = Math.min(100, Math.round(progress * 100));
     this.tray.setToolTip(`Home Manager — Выпито ${percent}% воды`);
-
     this.updateTrayMenu();
   }
 }

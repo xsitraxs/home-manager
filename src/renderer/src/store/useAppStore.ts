@@ -1,44 +1,10 @@
 import { create } from 'zustand';
+import { showToast } from '../components/ui/Toast';
+import type { Member, Chore, LeaderboardEntry, Settings, WaterStats } from '../../../shared/types';
+import { safeInt } from '../../../shared/types';
 
 // Безопасный доступ к Electron API через preload
-const api = (window as any).electronAPI;
-
-// Типы данных
-export interface Member {
-  id: number;
-  name: string;
-  created_at: string;
-}
-
-export interface Chore {
-  id: number;
-  title: string;
-  frequency_days: number;
-  assigned_to: number | null;
-  last_done: string | null;
-  next_due: string;
-  created_by: number | null;
-  sort_order: number;
-  assigned_name?: string;
-}
-
-export interface LeaderboardEntry {
-  member_name: string;
-  completed_count: number;
-  points: number;
-}
-
-export interface Settings {
-  [key: string]: string;
-}
-
-export interface WaterStats {
-  total_ml: number;
-  days_count: number;
-  avg_ml: number;
-  goal_met_days: number;
-  daily: { date: string; total_ml: number }[];
-}
+const api = (window as Window & { electronAPI: any }).electronAPI;
 
 type Page = 'dashboard' | 'chores' | 'water' | 'settings';
 
@@ -51,6 +17,9 @@ interface AppState {
   // Тема
   theme: 'dark' | 'light';
   setTheme: (theme: 'dark' | 'light') => void;
+
+  // Загрузка
+  loading: boolean;
 
   // Члены семьи
   members: Member[];
@@ -88,6 +57,17 @@ interface AppState {
   setSetting: (key: string, value: string) => Promise<void>;
 }
 
+// Обёртка для IPC-вызовов с обработкой ошибок
+async function ipc<T>(channel: string, ...args: any[]): Promise<T> {
+  try {
+    return await api.invoke(channel, ...args);
+  } catch (err: any) {
+    const msg = err?.message || 'Неизвестная ошибка';
+    showToast(msg, 'error');
+    throw err;
+  }
+}
+
 // Создание хранилища Zustand
 export const useAppStore = create<AppState>((set, get) => ({
   // Навигация
@@ -102,65 +82,83 @@ export const useAppStore = create<AppState>((set, get) => ({
     set({ theme });
   },
 
+  // Загрузка
+  loading: false,
+
   // Члены семьи
   members: [],
   loadMembers: async () => {
-    const members = await api.invoke('get-members');
+    const members = await ipc<Member[]>('get-members');
     set({ members });
+    const state = get();
+    if (state.chores.length > 0) {
+      const enriched = state.chores.map((chore) => ({
+        ...chore,
+        assigned_name: chore.assigned_to
+          ? members.find((m) => m.id === chore.assigned_to)?.name || null
+          : null,
+      }));
+      set({ chores: enriched });
+    }
   },
   addMember: async (name) => {
-    await api.invoke('add-member', name);
+    await ipc<Member>('add-member', name);
+    showToast('Член семьи добавлен', 'success');
     await get().loadMembers();
   },
   deleteMember: async (id) => {
-    await api.invoke('delete-member', id);
+    await ipc<void>('delete-member', id);
+    showToast('Член семьи удалён', 'success');
     await get().loadMembers();
   },
   renameMember: async (id, name) => {
-    await api.invoke('rename-member', id, name);
+    await ipc<void>('rename-member', id, name);
     await get().loadMembers();
   },
 
   // Домашние дела
   chores: [],
   loadChores: async () => {
-    const chores = await api.invoke('get-chores');
-    // Подтягиваем имена назначенных членов
+    const chores = await ipc<Chore[]>('get-chores');
     const members = get().members;
-    const enrichedChores = chores.map((chore: Chore) => ({
+    const enrichedChores = chores.map((chore) => ({
       ...chore,
       assigned_name: chore.assigned_to
-        ? members.find((m) => m.id === chore.assigned_to)?.name || 'Неизвестно'
+        ? members.find((m) => m.id === chore.assigned_to)?.name || null
         : null,
     }));
     set({ chores: enrichedChores });
   },
   addChore: async (title, frequencyDays, assignedTo) => {
-    await api.invoke('add-chore', title, frequencyDays, assignedTo);
+    await ipc<Chore>('add-chore', title, frequencyDays, assignedTo);
+    showToast('Дело добавлено', 'success');
     await get().loadChores();
   },
   updateChore: async (id, title, frequencyDays, assignedTo) => {
-    await api.invoke('update-chore', id, title, frequencyDays, assignedTo);
+    await ipc<void>('update-chore', id, title, frequencyDays, assignedTo);
+    showToast('Дело обновлено', 'success');
     await get().loadChores();
   },
   deleteChore: async (id) => {
-    await api.invoke('delete-chore', id);
+    await ipc<void>('delete-chore', id);
+    showToast('Дело удалено', 'success');
     await get().loadChores();
   },
   completeChore: async (choreId, doneBy) => {
-    await api.invoke('complete-chore', choreId, doneBy);
+    await ipc<void>('complete-chore', choreId, doneBy);
+    showToast('Дело выполнено! 🎉', 'success');
     await get().loadChores();
     await get().loadLeaderboard();
   },
   updateChoreOrder: async (orders) => {
-    await api.invoke('update-chore-order', orders);
+    await ipc<void>('update-chore-order', orders);
     await get().loadChores();
   },
 
   // Лидерборд
   leaderboard: [],
   loadLeaderboard: async () => {
-    const leaderboard = await api.invoke('get-leaderboard');
+    const leaderboard = await ipc<LeaderboardEntry[]>('get-leaderboard');
     set({ leaderboard });
   },
 
@@ -170,18 +168,17 @@ export const useAppStore = create<AppState>((set, get) => ({
   waterStats: null,
   showAddWaterModal: false,
   loadTodayWater: async () => {
-    const todayWater = await api.invoke('get-today-water');
+    const todayWater = await ipc<number>('get-today-water');
     set({ todayWater });
   },
   addWater: async (amountMl) => {
-    await api.invoke('add-water', amountMl);
+    await ipc<void>('add-water', amountMl);
     await get().loadTodayWater();
-    // Обновляем иконку в трее
     const progress = get().todayWater / get().waterGoal;
     api.invoke('update-tray-icon', progress);
   },
   loadWaterStats: async (days = 30) => {
-    const waterStats = await api.invoke('get-water-stats', days);
+    const waterStats = await ipc<WaterStats>('get-water-stats', days);
     set({ waterStats });
   },
   setShowAddWaterModal: (show) => set({ showAddWaterModal: show }),
@@ -189,21 +186,22 @@ export const useAppStore = create<AppState>((set, get) => ({
   // Настройки
   settings: {},
   loadSettings: async () => {
-    const settings = await api.invoke('get-settings');
+    set({ loading: true });
+    const settings = await ipc<Settings>('get-settings');
     set({
       settings,
-      waterGoal: parseInt(settings.water_goal_ml || '2000'),
+      waterGoal: safeInt(settings.water_goal_ml, 2000),
+      loading: false,
     });
-    // Применяем тему
     if (settings.theme) {
       set({ theme: settings.theme as 'dark' | 'light' });
     }
   },
   setSetting: async (key, value) => {
-    await api.invoke('set-setting', key, value);
+    await ipc<void>('set-setting', key, value);
     set((state) => ({
       settings: { ...state.settings, [key]: value },
-      waterGoal: key === 'water_goal_ml' ? parseInt(value) : state.waterGoal,
+      waterGoal: key === 'water_goal_ml' ? safeInt(value, 2000) : state.waterGoal,
     }));
   },
 }));

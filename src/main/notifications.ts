@@ -29,12 +29,19 @@ export class NotificationManager {
   }
 
   // Проверка необходимости отправки уведомления
+  // Безопасный parseInt
+  private safeInt(value: string | undefined, fallback: number): number {
+    if (!value) return fallback;
+    const n = parseInt(value, 10);
+    return Number.isFinite(n) ? n : fallback;
+  }
+
   private check(): void {
     const settings = this.db.getSettings();
-    const intervalMinutes = parseInt(settings.water_reminder_interval_minutes || '60');
-    const startHour = parseInt(settings.water_reminder_start_hour || '8');
-    const endHour = parseInt(settings.water_reminder_end_hour || '22');
-    const goalMl = parseInt(settings.water_goal_ml || '2000');
+    const intervalMinutes = this.safeInt(settings.water_reminder_interval_minutes, 60);
+    const startHour = this.safeInt(settings.water_reminder_start_hour, 8);
+    const endHour = this.safeInt(settings.water_reminder_end_hour, 22);
+    const goalMl = this.safeInt(settings.water_goal_ml, 2000);
 
     const now = new Date();
     const currentHour = now.getHours();

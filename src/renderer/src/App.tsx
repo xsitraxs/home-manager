@@ -1,10 +1,22 @@
-import React, { useEffect, useState } from 'react';
+import React, { Suspense, useEffect, useState } from 'react';
 import { Sidebar } from './components/ui/Sidebar';
-import { Dashboard } from './components/dashboard/Dashboard';
-import { ChoresPage } from './components/chores/ChoresPage';
-import { WaterPage } from './components/water/WaterPage';
-import { SettingsPage } from './components/settings/SettingsPage';
 import { useAppStore } from './store/useAppStore';
+import { ToastContainer } from './components/ui/Toast';
+
+// Lazy-loading страниц для code splitting
+const Dashboard = React.lazy(() => import('./components/dashboard/Dashboard').then(m => ({ default: m.Dashboard })));
+const ChoresPage = React.lazy(() => import('./components/chores/ChoresPage').then(m => ({ default: m.ChoresPage })));
+const WaterPage = React.lazy(() => import('./components/water/WaterPage').then(m => ({ default: m.WaterPage })));
+const SettingsPage = React.lazy(() => import('./components/settings/SettingsPage').then(m => ({ default: m.SettingsPage })));
+
+// Спиннер загрузки
+function LoadingSpinner() {
+  return (
+    <div className="flex items-center justify-center h-64">
+      <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+    </div>
+  );
+}
 
 // Главный компонент приложения
 export default function App() {
@@ -68,6 +80,7 @@ export default function App() {
 
   return (
     <div className="flex h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
+      <ToastContainer />
       {/* Боковая панель */}
       <Sidebar
         collapsed={sidebarCollapsed}
@@ -80,7 +93,9 @@ export default function App() {
 
         {/* Основной контент */}
         <main className="flex-1 overflow-auto p-6">
-          {renderPage()}
+          <Suspense fallback={<LoadingSpinner />}>
+            {renderPage()}
+          </Suspense>
         </main>
       </div>
     </div>

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAppStore } from '../../store/useAppStore';
+import { ConfirmDialog } from '../ui/ConfirmDialog';
 
 // Управление членами семьи
 export function FamilyManager() {
@@ -8,21 +9,19 @@ export function FamilyManager() {
   const [newName, setNewName] = useState('');
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editingName, setEditingName] = useState('');
+  const [deletingId, setDeletingId] = useState<number | null>(null);
 
-  // Добавление нового члена семьи
   const handleAdd = async () => {
     if (!newName.trim()) return;
     await addMember(newName.trim());
     setNewName('');
   };
 
-  // Начало редактирования
   const startEditing = (id: number, name: string) => {
     setEditingId(id);
     setEditingName(name);
   };
 
-  // Сохранение изменений
   const handleSave = async () => {
     if (editingId === null || !editingName.trim()) return;
     await renameMember(editingId, editingName.trim());
@@ -97,7 +96,7 @@ export function FamilyManager() {
                 ✏️
               </button>
               <button
-                onClick={() => deleteMember(member.id)}
+                onClick={() => setDeletingId(member.id)}
                 className="p-1.5 rounded hover:bg-danger/20 text-danger"
               >
                 🗑️
@@ -113,6 +112,17 @@ export function FamilyManager() {
           </div>
         )}
       </div>
+
+      <ConfirmDialog
+        isOpen={deletingId !== null}
+        title="Удалить члена семьи?"
+        message="Это действие нельзя отменить."
+        onConfirm={() => {
+          if (deletingId !== null) deleteMember(deletingId);
+          setDeletingId(null);
+        }}
+        onCancel={() => setDeletingId(null)}
+      />
     </div>
   );
 }

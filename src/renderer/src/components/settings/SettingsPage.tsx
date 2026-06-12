@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useAppStore } from '../../store/useAppStore';
 
@@ -11,15 +11,17 @@ export function SettingsPage() {
   const [endHour, setEndHour] = useState(22);
   const [minimizeToTray, setMinimizeToTray] = useState(false);
   const [autoStart, setAutoStart] = useState(false);
+  const syncedRef = useRef(false);
 
-  // Загрузка настроек
   useEffect(() => {
     loadSettings();
     loadMembers();
   }, []);
 
-  // Синхронизация с хранилищем
+  // Синхронизация с хранилищем (только при реальном изменении settings)
   useEffect(() => {
+    if (Object.keys(settings).length === 0) return;
+    syncedRef.current = true;
     setWaterGoal(parseInt(settings.water_goal_ml || '2000'));
     setReminderInterval(parseInt(settings.water_reminder_interval_minutes || '60'));
     setStartHour(parseInt(settings.water_reminder_start_hour || '8'));
@@ -28,21 +30,19 @@ export function SettingsPage() {
     setAutoStart(settings.autoStart === 'true');
   }, [settings]);
 
-  // Сохранение настроек
-  const handleSave = async () => {
-    await setSetting('water_goal_ml', String(waterGoal));
-    await setSetting('water_reminder_interval_minutes', String(reminderInterval));
-    await setSetting('water_reminder_start_hour', String(startHour));
-    await setSetting('water_reminder_end_hour', String(endHour));
-    await setSetting('minimizeToTray', String(minimizeToTray));
-    await setSetting('autoStart', String(autoStart));
-  };
-
-  // Автосохранение при изменении
+  // Сохранение только при пользовательских изменениях (не при mount)
   useEffect(() => {
-    const timer = setTimeout(handleSave, 500);
+    if (!syncedRef.current) return;
+    const timer = setTimeout(() => {
+      setSetting('water_goal_ml', String(waterGoal));
+      setSetting('water_reminder_interval_minutes', String(reminderInterval));
+      setSetting('water_reminder_start_hour', String(startHour));
+      setSetting('water_reminder_end_hour', String(endHour));
+      setSetting('minimizeToTray', String(minimizeToTray));
+      setSetting('autoStart', String(autoStart));
+    }, 500);
     return () => clearTimeout(timer);
-  }, [waterGoal, reminderInterval, startHour, endHour, minimizeToTray, autoStart, theme]);
+  }, [waterGoal, reminderInterval, startHour, endHour, minimizeToTray, autoStart]);
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
