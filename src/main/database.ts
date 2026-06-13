@@ -264,7 +264,7 @@ export class DatabaseManager {
   setSetting(key: string, value: string): void {
     const safeKey = sanitize(key, 50);
     const safeValue = sanitize(value, 200);
-    const allowed = ['water_goal_ml', 'water_reminder_interval_minutes', 'water_reminder_start_hour', 'water_reminder_end_hour', 'theme', 'minimizeToTray', 'autoStart'];
+    const allowed = ['water_goal_ml', 'water_reminder_interval_minutes', 'water_reminder_start_hour', 'water_reminder_end_hour', 'theme', 'minimizeToTray', 'autoStart', 'last_water_notification'];
     if (!allowed.includes(safeKey)) throw new Error(`Setting "${safeKey}" not allowed`);
     this.db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)').run(safeKey, safeValue);
   }

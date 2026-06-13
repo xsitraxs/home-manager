@@ -211,7 +211,7 @@ function setupIPC(): void {
   const ALLOWED_SETTINGS = new Set([
     'water_goal_ml', 'water_reminder_interval_minutes',
     'water_reminder_start_hour', 'water_reminder_end_hour',
-    'theme', 'minimizeToTray', 'autoStart',
+    'theme', 'minimizeToTray', 'autoStart', 'last_water_notification',
   ]);
 
   ipcMain.handle('set-setting', (_, key: unknown, value: unknown) => {
