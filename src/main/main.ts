@@ -88,11 +88,8 @@ function createWindow(): void {
 
   mainWindow.on('close', (event) => {
     const settings = db.getSettings();
-    // Shift+Click на закрытие = полное закрытие, иначе — в трей
-    if (settings.minimizeToTray === 'true' && !mainWindow?.isDestroyed()) {
-      // Проверяем зажат ли Shift через electronAPI недоступен —
-      // используем простой флаг: если окно было скрыто программно, не перехватываем
-      if ((mainWindow as any)._forceClose) return;
+    // Если включено "сворачивать в трей" — просто скрываем окно
+    if (settings.minimizeToTray === 'true') {
       event.preventDefault();
       mainWindow?.hide();
     }
@@ -194,11 +191,15 @@ function setupIPC(): void {
 
   ipcMain.handle('get-leaderboard', () => db.getLeaderboard());
 
-  ipcMain.handle('add-water', (_, amountMl: unknown) => {
-    return db.addWater(validateNumber(amountMl, 1, 5000));
+  ipcMain.handle('add-water', (_, amountMl: unknown, userId?: unknown) => {
+    const uid = userId !== undefined ? validateNumber(userId, 0, Number.MAX_SAFE_INTEGER) : 0;
+    return db.addWater(validateNumber(amountMl, 1, 5000), uid);
   });
 
-  ipcMain.handle('get-today-water', () => db.getTodayWater());
+  ipcMain.handle('get-today-water', (_, userId?: unknown) => {
+    const uid = userId !== undefined ? validateNumber(userId, 0, Number.MAX_SAFE_INTEGER) : 0;
+    return db.getTodayWater(uid);
+  });
 
   ipcMain.handle('get-water-stats', (_, days?: unknown) => {
     return db.getWaterStats(days !== undefined ? validateNumber(days, 1, 365) : 30);
@@ -232,6 +233,11 @@ function setupIPC(): void {
       name: 'Home Manager',
     });
     db.setSetting('autoStart', String(isEnabled));
+  });
+
+  // Полный выход из приложения (из tray или renderer)
+  ipcMain.handle('app-quit', () => {
+    app.quit();
   });
 }
 

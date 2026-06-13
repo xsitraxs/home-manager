@@ -41,7 +41,7 @@ export class DatabaseManager {
       CREATE TABLE IF NOT EXISTS members (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT NOT NULL,
-        created_at TEXT DEFAULT (datetime('now'))
+        created_at TEXT DEFAULT (datetime('now', 'localtime'))
       );
 
       CREATE TABLE IF NOT EXISTS chores (
@@ -50,7 +50,7 @@ export class DatabaseManager {
         frequency_days INTEGER NOT NULL DEFAULT 1,
         assigned_to INTEGER REFERENCES members(id) ON DELETE SET NULL,
         last_done TEXT,
-        next_due TEXT NOT NULL DEFAULT (date('now')),
+        next_due TEXT NOT NULL DEFAULT (date('now', 'localtime')),
         created_by INTEGER REFERENCES members(id),
         sort_order INTEGER DEFAULT 0
       );
@@ -59,14 +59,14 @@ export class DatabaseManager {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         chore_id INTEGER REFERENCES chores(id) ON DELETE CASCADE,
         done_by INTEGER REFERENCES members(id) ON DELETE SET NULL,
-        done_at TEXT DEFAULT (datetime('now'))
+        done_at TEXT DEFAULT (datetime('now', 'localtime'))
       );
 
       CREATE TABLE IF NOT EXISTS water_log (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER DEFAULT 0,
         amount_ml INTEGER NOT NULL,
-        logged_at TEXT DEFAULT (datetime('now'))
+        logged_at TEXT DEFAULT (datetime('now', 'localtime'))
       );
 
       CREATE TABLE IF NOT EXISTS settings (
@@ -149,11 +149,11 @@ export class DatabaseManager {
     // Транзакция: INSERT + UPDATE атомарно
     const tx = this.db.transaction(() => {
       this.db.prepare(
-        'INSERT INTO chore_log (chore_id, done_by, done_at) VALUES (?, ?, datetime(\'now\'))'
+        'INSERT INTO chore_log (chore_id, done_by, done_at) VALUES (?, ?, datetime(\'now\', \'localtime\'))'
       ).run(choreId, doneBy);
 
       this.db.prepare(
-        'UPDATE chores SET last_done = datetime(\'now\'), next_due = ? WHERE id = ?'
+        'UPDATE chores SET last_done = datetime(\'now\', \'localtime\'), next_due = ? WHERE id = ?'
       ).run(nextDue, choreId);
     });
     tx();
@@ -175,7 +175,7 @@ export class DatabaseManager {
       FROM chore_log cl
       LEFT JOIN chores c ON cl.chore_id = c.id
       LEFT JOIN members m ON cl.done_by = m.id
-      WHERE cl.done_at >= datetime('now', ?)
+      WHERE cl.done_at >= datetime('now', 'localtime', ?)
       ORDER BY cl.done_at DESC
     `).all(`-${days} days`) as ChoreLog[];
   }
@@ -188,7 +188,7 @@ export class DatabaseManager {
         COUNT(cl.id) * 10 as points
       FROM members m
       LEFT JOIN chore_log cl ON cl.done_by = m.id
-        AND cl.done_at >= datetime('now', '-30 days')
+        AND cl.done_at >= datetime('now', 'localtime', '-30 days')
       GROUP BY m.id
       ORDER BY points DESC
     `).all() as LeaderboardEntry[];
@@ -196,16 +196,17 @@ export class DatabaseManager {
 
   // === МЕТОДЫ ДЛЯ ТРЕКЕРА ВОДЫ ===
 
-  addWater(amountMl: number): void {
+  addWater(amountMl: number, userId: number = 0): void {
+    const safeAmount = validateNumber(amountMl, 1, 5000);
     this.db.prepare(
-      'INSERT INTO water_log (user_id, amount_ml, logged_at) VALUES (0, ?, datetime(\'now\'))'
-    ).run(amountMl);
+      'INSERT INTO water_log (user_id, amount_ml, logged_at) VALUES (?, ?, datetime(\'now\', \'localtime\'))'
+    ).run(userId, safeAmount);
   }
 
-  getTodayWater(): number {
+  getTodayWater(userId: number = 0): number {
     const result = this.db.prepare(
-      'SELECT COALESCE(SUM(amount_ml), 0) as total FROM water_log WHERE date(logged_at) = date(\'now\')'
-    ).get() as { total: number };
+      'SELECT COALESCE(SUM(amount_ml), 0) as total FROM water_log WHERE date(logged_at) = date(\'now\', \'localtime\') AND user_id = ?'
+    ).get(userId) as { total: number };
     return result.total;
   }
 
@@ -216,14 +217,14 @@ export class DatabaseManager {
         COALESCE(SUM(amount_ml), 0) as total_ml,
         COUNT(DISTINCT date(logged_at)) as days_count
       FROM water_log
-      WHERE logged_at >= datetime('now', ?)
+      WHERE logged_at >= datetime('now', 'localtime', ?)
     `).get(`-${days} days`) as any;
 
     // Дневная статистика
     const daily = this.db.prepare(`
       SELECT date(logged_at) as date, SUM(amount_ml) as total_ml
       FROM water_log
-      WHERE logged_at >= datetime('now', ?)
+      WHERE logged_at >= datetime('now', 'localtime', ?)
       GROUP BY date(logged_at)
       ORDER BY date
     `).all(`-${days} days`) as { date: string; total_ml: number }[];
@@ -242,7 +243,7 @@ export class DatabaseManager {
   }
 
   resetWaterToday(): void {
-    this.db.prepare('DELETE FROM water_log WHERE date(logged_at) = date(\'now\')').run();
+    this.db.prepare('DELETE FROM water_log WHERE date(logged_at) = date(\'now\', \'localtime\')').run();
   }
 
   // === МЕТОДЫ ДЛЯ НАСТРОЕК ===
