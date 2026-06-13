@@ -3,6 +3,21 @@ import path from 'path';
 import { app } from 'electron';
 import { Member, Chore, ChoreLog, Settings, LeaderboardEntry, WaterStats, validateString, validateNumber } from '../shared/types';
 
+// ============================================================
+// БЕЗОПАСНОСТЬ: ШИФРОВАНИЕ БД
+// ============================================================
+// Текущая БД хранится в открытом виде (SQLite без шифрования).
+// При масштабировании или хранении приватных данных рекомендуется:
+//   1. Использовать sql.js (WASM) + AES-256 шифрование на уровне приложения
+//   2. Или better-sqlite3 с SQLCipher (требует нативной компиляции)
+//   3. Хранить ключ шифрования в OS keychain (electron safeStorage API)
+//
+// Пример интеграции с safeStorage:
+//   const { safeStorage } = require('electron');
+//   const key = safeStorage.encryptString('master-password');
+//   // При старте: safeStorage.decryptString(key) → передать в SQLCipher
+// ============================================================
+
 // Санитизация строки (удаление control characters)
 function sanitize(value: string, maxLength: number): string {
   return value.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '').slice(0, maxLength);

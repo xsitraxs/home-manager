@@ -48,19 +48,23 @@ function createWindow(): void {
     backgroundColor: '#1a1a2e',
   });
 
-  // CSP только в production (dev использует Vite HMR с eval)
-  if (process.env.NODE_ENV !== 'development') {
-    session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
-      callback({
-        responseHeaders: {
-          ...details.responseHeaders,
-          'Content-Security-Policy': [
-            "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self';"
-          ],
-        },
-      });
+  // Content Security Policy — dev и prod
+  session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+    const isDev = process.env.NODE_ENV === 'development';
+
+    // Dev: разрешаем unsafe-eval (Vite HMR) + localhost (HMR WebSocket)
+    // Prod: строгая политика без unsafe-eval
+    const csp = isDev
+      ? "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' ws://localhost:* http://localhost:*;"
+      : "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'; worker-src 'self'; child-src 'self';";
+
+    callback({
+      responseHeaders: {
+        ...details.responseHeaders,
+        'Content-Security-Policy': [csp],
+      },
     });
-  }
+  });
 
   // Ограничиваем навигацию
   mainWindow.webContents.on('will-navigate', (event, url) => {
