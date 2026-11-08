@@ -5,6 +5,12 @@ import { ChoresList } from './ChoresList';
 import { ChoreModal } from './ChoreModal';
 import { Leaderboard } from './Leaderboard';
 import { FamilyManager } from './FamilyManager';
+import { localDateKey } from '../../../../shared/types';
+
+function csvCell(value: string): string {
+  const safe = /^[\s]*[=+@-]/.test(value) ? `'${value}` : value;
+  return `"${safe.replace(/"/g, '""')}"`;
+}
 
 // Страница планировщика домашних дел
 export function ChoresPage() {
@@ -40,7 +46,7 @@ export function ChoresPage() {
   };
 
   // Статистика на сегодня
-  const today = new Date().toISOString().split('T')[0];
+  const today = localDateKey();
   const todayChores = chores.filter((c) => c.next_due <= today);
   const overdueChores = chores.filter((c) => c.next_due < today);
 
@@ -68,7 +74,7 @@ export function ChoresPage() {
                   const status = c.next_due < today ? 'overdue' : c.next_due === today ? 'today' : 'future';
                   rows.push([c.title, String(c.frequency_days), c.assigned_name || '—', c.next_due, statusMap[status]]);
                 }
-                const csv = rows.map(r => r.join(',')).join('\n');
+                const csv = rows.map(r => r.map(csvCell).join(',')).join('\r\n');
                 const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' });
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');

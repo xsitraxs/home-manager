@@ -3,9 +3,14 @@ import { motion } from 'framer-motion';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { useAppStore } from '../../store/useAppStore';
 
-// Экспорт данных в CSV
+// Escape CSV cells and neutralize spreadsheet formula prefixes from user-controlled data.
+function csvCell(value: string): string {
+  const safe = /^[\s]*[=+@-]/.test(value) ? `'${value}` : value;
+  return `"${safe.replace(/"/g, '""')}"`;
+}
+
 function downloadCSV(filename: string, rows: string[][]): void {
-  const csv = rows.map(r => r.join(',')).join('\n');
+  const csv = rows.map(r => r.map(csvCell).join(',')).join('\r\n');
   const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -26,7 +31,8 @@ export function WaterStats() {
 
   // Форматирование даты для графика
   const formatDate = (dateStr: string) => {
-    const date = new Date(dateStr);
+    const [year, month, day] = dateStr.split('-').map(Number);
+    const date = new Date(year, month - 1, day);
     return date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
   };
 

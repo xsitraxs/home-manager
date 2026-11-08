@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useAppStore } from '../../store/useAppStore';
+import { localDateKey } from '../../../../shared/types';
 
 // Главный экран — компактный обзор обоих модулей
 export function Dashboard() {
@@ -22,7 +23,7 @@ export function Dashboard() {
   }, [currentPage]);
 
   const waterProgress = Math.min(1, todayWater / waterGoal);
-  const today = new Date().toISOString().split('T')[0];
+  const today = localDateKey();
 
   // Дела на сегодня (просроченные + на сегодня)
   const todayChores = chores.filter((chore) => {

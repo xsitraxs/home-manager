@@ -33,10 +33,16 @@ export class TrayManager {
   private tray: Tray | null = null;
   private mainWindow: BrowserWindow;
   private db: DatabaseManager;
+  private openWindow: () => void;
 
-  constructor(mainWindow: BrowserWindow, db: DatabaseManager) {
+  constructor(mainWindow: BrowserWindow, db: DatabaseManager, openWindow: () => void) {
     this.mainWindow = mainWindow;
     this.db = db;
+    this.openWindow = openWindow;
+  }
+
+  setMainWindow(mainWindow: BrowserWindow): void {
+    this.mainWindow = mainWindow;
   }
 
   createTray(): void {
@@ -46,6 +52,10 @@ export class TrayManager {
     this.updateTrayMenu();
 
     this.tray.on('click', () => {
+      if (this.mainWindow.isDestroyed()) {
+        this.openWindow();
+        return;
+      }
       if (this.mainWindow.isVisible()) {
         this.mainWindow.hide();
       } else {
@@ -62,6 +72,10 @@ export class TrayManager {
       {
         label: 'Открыть',
         click: () => {
+          if (this.mainWindow.isDestroyed()) {
+            this.openWindow();
+            return;
+          }
           this.mainWindow.show();
           this.mainWindow.focus();
         },
@@ -71,6 +85,9 @@ export class TrayManager {
         label: 'Быстро: +250мл воды',
         click: () => {
           this.db.addWater(250);
+          const goal = Number(this.db.getSetting('water_goal_ml')) || 2000;
+          this.updateIcon(this.db.getTodayWater() / goal);
+          if (this.mainWindow.isDestroyed()) this.openWindow();
           this.mainWindow.webContents.send('water-added', 250);
           this.mainWindow.webContents.send('shortcut', 'refresh-water');
         },

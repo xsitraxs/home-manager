@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence, Reorder } from 'framer-motion';
 import { useAppStore } from '../../store/useAppStore';
 import { ConfirmDialog } from '../ui/ConfirmDialog';
-import type { Chore } from '../../../../shared/types';
+import { localDateKey, type Chore } from '../../../../shared/types';
 
 interface ChoresListProps {
   onEdit: (chore: any) => void;
@@ -13,7 +13,7 @@ export function ChoresList({ onEdit }: ChoresListProps) {
   const { chores, completeChore, deleteChore, updateChoreOrder } = useAppStore();
   const [completingId, setCompletingId] = useState<number | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
-  const today = new Date().toISOString().split('T')[0];
+  const today = localDateKey();
 
   const getStatus = (nextDue: string) => {
     if (nextDue < today) return 'overdue';

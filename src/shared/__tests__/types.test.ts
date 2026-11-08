@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { validateString, validateNumber, validateInteger, validateId, safeInt } from '../types';
+import { validateString, validateNumber, validateInteger, validateId, safeInt, localDateKey } from '../types';
+
+describe('localDateKey', () => {
+  it('formats a local calendar date without UTC conversion', () => {
+    expect(localDateKey(new Date(2024, 0, 2, 23, 30))).toBe('2024-01-02');
+  });
+});
 
 describe('validateString', () => {
   it('rejects non-string input', () => {
