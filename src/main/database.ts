@@ -1,7 +1,7 @@
 import Database from 'better-sqlite3';
 import path from 'path';
 import { app } from 'electron';
-import { Member, Chore, ChoreLog, Settings, LeaderboardEntry, WaterStats, validateString, validateNumber } from '../shared/types';
+import { Member, Chore, ChoreLog, Settings, LeaderboardEntry, WaterStats, validateString, validateInteger } from '../shared/types';
 
 // ============================================================
 // БЕЗОПАСНОСТЬ: ШИФРОВАНИЕ БД
@@ -120,6 +120,7 @@ export class DatabaseManager {
   }
 
   addChore(title: string, frequencyDays: number, assignedTo: number | null): Chore {
+    frequencyDays = validateInteger(frequencyDays, 1, 365);
     const safeTitle = sanitize(title, 100);
     const nextDue = this.calcNextDue(frequencyDays);
     const maxOrder = (this.db.prepare('SELECT COALESCE(MAX(sort_order), 0) as m FROM chores').get() as any).m;
@@ -130,6 +131,7 @@ export class DatabaseManager {
   }
 
   updateChore(id: number, title: string, frequencyDays: number, assignedTo: number | null): void {
+    frequencyDays = validateInteger(frequencyDays, 1, 365);
     const safeTitle = sanitize(title, 100);
     this.db.prepare(
       'UPDATE chores SET title = ?, frequency_days = ?, assigned_to = ? WHERE id = ?'
@@ -197,7 +199,7 @@ export class DatabaseManager {
   // === МЕТОДЫ ДЛЯ ТРЕКЕРА ВОДЫ ===
 
   addWater(amountMl: number, userId: number = 0): void {
-    const safeAmount = validateNumber(amountMl, 1, 5000);
+    const safeAmount = validateInteger(amountMl, 1, 5000);
     this.db.prepare(
       'INSERT INTO water_log (user_id, amount_ml, logged_at) VALUES (?, ?, datetime(\'now\', \'localtime\'))'
     ).run(userId, safeAmount);
@@ -210,24 +212,26 @@ export class DatabaseManager {
     return result.total;
   }
 
-  getWaterStats(days: number = 30): WaterStats {
+  getWaterStats(days: number = 30, userId: number = 0): WaterStats {
+    days = validateInteger(days, 1, 365);
+    userId = validateInteger(userId, 0, Number.MAX_SAFE_INTEGER);
     // Общая статистика
     const stats = this.db.prepare(`
       SELECT
         COALESCE(SUM(amount_ml), 0) as total_ml,
         COUNT(DISTINCT date(logged_at)) as days_count
       FROM water_log
-      WHERE logged_at >= datetime('now', 'localtime', ?)
-    `).get(`-${days} days`) as any;
+      WHERE logged_at >= datetime('now', 'localtime', ?) AND user_id = ?
+    `).get(`-${days} days`, userId) as any;
 
     // Дневная статистика
     const daily = this.db.prepare(`
       SELECT date(logged_at) as date, SUM(amount_ml) as total_ml
       FROM water_log
-      WHERE logged_at >= datetime('now', 'localtime', ?)
+      WHERE logged_at >= datetime('now', 'localtime', ?) AND user_id = ?
       GROUP BY date(logged_at)
       ORDER BY date
-    `).all(`-${days} days`) as { date: string; total_ml: number }[];
+    `).all(`-${days} days`, userId) as { date: string; total_ml: number }[];
 
     const goalMl = parseInt(this.getSetting('water_goal_ml') || '2000');
     const goalMetDays = daily.filter(d => d.total_ml >= goalMl).length;

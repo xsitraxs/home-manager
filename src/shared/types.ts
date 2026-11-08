@@ -68,8 +68,14 @@ export function validateNumber(value: unknown, min: number, max: number): number
   return num;
 }
 
+export function validateInteger(value: unknown, min: number, max: number): number {
+  const num = validateNumber(value, min, max);
+  if (!Number.isInteger(num)) throw new Error('Expected integer');
+  return num;
+}
+
 export function validateId(value: unknown): number {
-  return validateNumber(value, 1, Number.MAX_SAFE_INTEGER);
+  return validateInteger(value, 1, Number.MAX_SAFE_INTEGER);
 }
 
 export function safeInt(value: string | undefined, fallback: number): number {

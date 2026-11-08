@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { validateString, validateNumber, validateId, safeInt } from '../types';
+import { validateString, validateNumber, validateInteger, validateId, safeInt } from '../types';
 
 describe('validateString', () => {
   it('rejects non-string input', () => {
@@ -72,6 +72,16 @@ describe('validateNumber', () => {
 
   it('accepts valid number', () => {
     expect(validateNumber(50, 0, 100)).toBe(50);
+  });
+});
+
+describe('validateInteger', () => {
+  it('rejects fractional values', () => {
+    expect(() => validateInteger(1.5, 1, 10)).toThrow('Expected integer');
+  });
+
+  it('accepts integer values', () => {
+    expect(validateInteger('5', 1, 10)).toBe(5);
   });
 });
 
