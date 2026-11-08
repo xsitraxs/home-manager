@@ -27,23 +27,20 @@ function safeInvoke(channel: string, ...args: any[]): Promise<any> {
 }
 
 // Безопасная обёртка над ipcRenderer.on
-function safeOn(channel: string, listener: (...args: any[]) => void): void {
+function safeOn(channel: string, listener: (...args: any[]) => void): () => void {
   if (!isValidChannel(channel, 'receive')) {
     console.warn(`Blocked IPC receive: ${channel}`);
-    return;
+    return () => undefined;
   }
-  ipcRenderer.on(channel, (_event, ...args) => listener(...args));
-}
 
-function safeRemoveAllListeners(channel: string): void {
-  if (isValidChannel(channel, 'receive')) {
-    ipcRenderer.removeAllListeners(channel);
-  }
+  const wrappedListener = (_event: Electron.IpcRendererEvent, ...args: any[]) => listener(...args);
+  ipcRenderer.on(channel, wrappedListener);
+  // Unsubscribe only this subscriber; never remove listeners owned by other components.
+  return () => ipcRenderer.removeListener(channel, wrappedListener);
 }
 
 // Предоставляем безопасный API renderer-процессу
 contextBridge.exposeInMainWorld('electronAPI', {
   invoke: safeInvoke,
   on: safeOn,
-  removeAllListeners: safeRemoveAllListeners,
 });
