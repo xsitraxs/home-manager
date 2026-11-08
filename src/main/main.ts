@@ -4,11 +4,12 @@ import { autoUpdater } from 'electron-updater';
 import { DatabaseManager } from './database';
 import { TrayManager } from './tray';
 import { NotificationManager } from './notifications';
-import { validateString, validateNumber, validateId } from '../shared/types';
+import { validateString, validateNumber, validateInteger, validateId } from '../shared/types';
 
 let mainWindow: BrowserWindow | null = null;
 let trayManager: TrayManager | null = null;
 let notificationManager: NotificationManager | null = null;
+let isQuitting = false;
 const db = new DatabaseManager();
 
 // Crash reporting — локально в crashDumps
@@ -89,7 +90,7 @@ function createWindow(): void {
   mainWindow.on('close', (event) => {
     const settings = db.getSettings();
     // Если включено "сворачивать в трей" — просто скрываем окно
-    if (settings.minimizeToTray === 'true') {
+    if (!isQuitting && settings.minimizeToTray === 'true') {
       event.preventDefault();
       mainWindow?.hide();
     }
@@ -150,7 +151,7 @@ function setupIPC(): void {
   ipcMain.handle('add-chore', (_, title: unknown, frequencyDays: unknown, assignedTo: unknown) => {
     return db.addChore(
       validateString(title, 100),
-      validateNumber(frequencyDays, 1, 365),
+      validateInteger(frequencyDays, 1, 365),
       assignedTo === null ? null : validateId(assignedTo)
     );
   });
@@ -159,7 +160,7 @@ function setupIPC(): void {
     return db.updateChore(
       validateId(id),
       validateString(title, 100),
-      validateNumber(frequencyDays, 1, 365),
+      validateInteger(frequencyDays, 1, 365),
       assignedTo === null ? null : validateId(assignedTo)
     );
   });
@@ -180,29 +181,29 @@ function setupIPC(): void {
     return db.updateChoreOrder(
       orders.map((o: any) => ({
         id: validateId(o.id),
-        sort_order: validateNumber(o.sort_order, 0, 10000),
+        sort_order: validateInteger(o.sort_order, 0, 10000),
       }))
     );
   });
 
   ipcMain.handle('get-chore-log', (_, days?: unknown) => {
-    return db.getChoreLog(days !== undefined ? validateNumber(days, 1, 365) : 30);
+    return db.getChoreLog(days !== undefined ? validateInteger(days, 1, 365) : 30);
   });
 
   ipcMain.handle('get-leaderboard', () => db.getLeaderboard());
 
   ipcMain.handle('add-water', (_, amountMl: unknown, userId?: unknown) => {
-    const uid = userId !== undefined ? validateNumber(userId, 0, Number.MAX_SAFE_INTEGER) : 0;
-    return db.addWater(validateNumber(amountMl, 1, 5000), uid);
+    const uid = userId !== undefined ? validateInteger(userId, 0, Number.MAX_SAFE_INTEGER) : 0;
+    return db.addWater(validateInteger(amountMl, 1, 5000), uid);
   });
 
   ipcMain.handle('get-today-water', (_, userId?: unknown) => {
-    const uid = userId !== undefined ? validateNumber(userId, 0, Number.MAX_SAFE_INTEGER) : 0;
+    const uid = userId !== undefined ? validateInteger(userId, 0, Number.MAX_SAFE_INTEGER) : 0;
     return db.getTodayWater(uid);
   });
 
   ipcMain.handle('get-water-stats', (_, days?: unknown) => {
-    return db.getWaterStats(days !== undefined ? validateNumber(days, 1, 365) : 30);
+    return db.getWaterStats(days !== undefined ? validateInteger(days, 1, 365) : 30, 0);
   });
 
   ipcMain.handle('reset-water-today', () => db.resetWaterToday());
@@ -227,7 +228,8 @@ function setupIPC(): void {
 
   // Автозапуск — реальное включение/выключение в ОС
   ipcMain.handle('set-auto-start', (_, enabled: unknown) => {
-    const isEnabled = Boolean(enabled);
+    if (typeof enabled !== 'boolean') throw new Error('Expected boolean');
+    const isEnabled = enabled;
     app.setLoginItemSettings({
       openAtLogin: isEnabled,
       name: 'Home Manager',
@@ -277,6 +279,10 @@ if (!gotLock) {
 
   app.on('window-all-closed', () => {
     if (process.platform !== 'darwin') app.quit();
+  });
+
+  app.on('before-quit', () => {
+    isQuitting = true;
   });
 
   app.on('will-quit', () => {

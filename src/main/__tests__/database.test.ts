@@ -176,11 +176,16 @@ describe('Water', () => {
     expect(db.getTodayWater()).toBe(600);
   });
 
-  it('returns water stats', () => {
-    db.addWater(500);
-    const stats = db.getWaterStats(1);
+  it('returns water stats for the requested user only', () => {
+    db.addWater(500, 0);
+    db.addWater(300, 12);
+    const stats = db.getWaterStats(1, 0);
     expect(stats.total_ml).toBe(500);
     expect(stats.daily.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('rejects fractional water amounts', () => {
+    expect(() => db.addWater(250.5)).toThrow('Expected integer');
   });
 
   it('resets today water', () => {

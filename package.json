@@ -1,7 +1,7 @@
 {
   "name": "home-manager",
   "version": "1.0.0",
-  "description": "Планировщик домашних дел и трекер воды",
+  "description": "Бесплатное приложение для планирования домашних дел, семейных обязанностей и отслеживания воды",
   "main": "dist/main/main.js",
   "scripts": {
     "dev": "concurrently \"tsc -p tsconfig.main.json -w\" \"vite\" \"wait-on dist/main/main.js && cross-env NODE_ENV=development electron .\"",
