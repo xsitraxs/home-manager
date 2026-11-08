@@ -79,6 +79,10 @@ describe('Members', () => {
     const member = db.addMember('Миша\x00\x01');
     expect(member.name).toBe('Миша');
   });
+
+  it('rejects names that become empty after sanitization', () => {
+    expect(() => db.addMember('\x00\x01')).toThrow('Name cannot be empty');
+  });
 });
 
 // ==================== CHORES ====================

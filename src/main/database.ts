@@ -99,7 +99,8 @@ export class DatabaseManager {
   }
 
   addMember(name: string): Member {
-    const safeName = sanitize(name, 50);
+    const safeName = sanitize(name, 50).trim();
+    if (!safeName) throw new Error('Name cannot be empty');
     const result = this.db.prepare('INSERT INTO members (name) VALUES (?)').run(safeName);
     return this.db.prepare('SELECT * FROM members WHERE id = ?').get(result.lastInsertRowid) as Member;
   }
@@ -109,7 +110,8 @@ export class DatabaseManager {
   }
 
   renameMember(id: number, name: string): void {
-    const safeName = sanitize(name, 50);
+    const safeName = sanitize(name, 50).trim();
+    if (!safeName) throw new Error('Name cannot be empty');
     this.db.prepare('UPDATE members SET name = ? WHERE id = ?').run(safeName, id);
   }
 
@@ -121,7 +123,8 @@ export class DatabaseManager {
 
   addChore(title: string, frequencyDays: number, assignedTo: number | null): Chore {
     frequencyDays = validateInteger(frequencyDays, 1, 365);
-    const safeTitle = sanitize(title, 100);
+    const safeTitle = sanitize(title, 100).trim();
+    if (!safeTitle) throw new Error('Title cannot be empty');
     const nextDue = this.calcNextDue(frequencyDays);
     const maxOrder = (this.db.prepare('SELECT COALESCE(MAX(sort_order), 0) as m FROM chores').get() as any).m;
     const result = this.db.prepare(
@@ -132,7 +135,8 @@ export class DatabaseManager {
 
   updateChore(id: number, title: string, frequencyDays: number, assignedTo: number | null): void {
     frequencyDays = validateInteger(frequencyDays, 1, 365);
-    const safeTitle = sanitize(title, 100);
+    const safeTitle = sanitize(title, 100).trim();
+    if (!safeTitle) throw new Error('Title cannot be empty');
     this.db.prepare(
       'UPDATE chores SET title = ?, frequency_days = ?, assigned_to = ? WHERE id = ?'
     ).run(safeTitle, frequencyDays, assignedTo, id);
@@ -200,12 +204,14 @@ export class DatabaseManager {
 
   addWater(amountMl: number, userId: number = 0): void {
     const safeAmount = validateInteger(amountMl, 1, 5000);
+    userId = validateInteger(userId, 0, Number.MAX_SAFE_INTEGER);
     this.db.prepare(
       'INSERT INTO water_log (user_id, amount_ml, logged_at) VALUES (?, ?, datetime(\'now\', \'localtime\'))'
     ).run(userId, safeAmount);
   }
 
   getTodayWater(userId: number = 0): number {
+    userId = validateInteger(userId, 0, Number.MAX_SAFE_INTEGER);
     const result = this.db.prepare(
       'SELECT COALESCE(SUM(amount_ml), 0) as total FROM water_log WHERE date(logged_at) = date(\'now\', \'localtime\') AND user_id = ?'
     ).get(userId) as { total: number };
@@ -221,33 +227,34 @@ export class DatabaseManager {
         COALESCE(SUM(amount_ml), 0) as total_ml,
         COUNT(DISTINCT date(logged_at)) as days_count
       FROM water_log
-      WHERE logged_at >= datetime('now', 'localtime', ?) AND user_id = ?
-    `).get(`-${days} days`, userId) as any;
+      WHERE date(logged_at) >= date('now', 'localtime', ?) AND user_id = ?
+    `).get(`-${days - 1} days`, userId) as any;
 
     // Дневная статистика
     const daily = this.db.prepare(`
       SELECT date(logged_at) as date, SUM(amount_ml) as total_ml
       FROM water_log
-      WHERE logged_at >= datetime('now', 'localtime', ?) AND user_id = ?
+      WHERE date(logged_at) >= date('now', 'localtime', ?) AND user_id = ?
       GROUP BY date(logged_at)
       ORDER BY date
-    `).all(`-${days} days`, userId) as { date: string; total_ml: number }[];
+    `).all(`-${days - 1} days`, userId) as { date: string; total_ml: number }[];
 
     const goalMl = parseInt(this.getSetting('water_goal_ml') || '2000');
     const goalMetDays = daily.filter(d => d.total_ml >= goalMl).length;
-    const avgMl = daily.length > 0 ? Math.round(daily.reduce((s, d) => s + d.total_ml, 0) / daily.length) : 0;
+    const avgMl = Math.round(stats.total_ml / days);
 
     return {
       total_ml: stats.total_ml,
-      days_count: stats.days_count,
+      days_count: days,
       avg_ml: avgMl,
       goal_met_days: goalMetDays,
       daily,
     };
   }
 
-  resetWaterToday(): void {
-    this.db.prepare('DELETE FROM water_log WHERE date(logged_at) = date(\'now\', \'localtime\')').run();
+  resetWaterToday(userId: number = 0): void {
+    userId = validateInteger(userId, 0, Number.MAX_SAFE_INTEGER);
+    this.db.prepare('DELETE FROM water_log WHERE date(logged_at) = date(\'now\', \'localtime\') AND user_id = ?').run(userId);
   }
 
   // === МЕТОДЫ ДЛЯ НАСТРОЕК ===
@@ -269,7 +276,7 @@ export class DatabaseManager {
   setSetting(key: string, value: string): void {
     const safeKey = sanitize(key, 50);
     const safeValue = sanitize(value, 200);
-    const allowed = ['water_goal_ml', 'water_reminder_interval_minutes', 'water_reminder_start_hour', 'water_reminder_end_hour', 'theme', 'minimizeToTray', 'autoStart', 'last_water_notification'];
+    const allowed = ['water_goal_ml', 'water_reminder_interval_minutes', 'water_reminder_start_hour', 'water_reminder_end_hour', 'theme', 'minimizeToTray', 'autoStart', 'last_water_notification', 'last_goal_notification_date'];
     if (!allowed.includes(safeKey)) throw new Error(`Setting "${safeKey}" not allowed`);
     this.db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)').run(safeKey, safeValue);
   }

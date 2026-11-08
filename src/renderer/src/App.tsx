@@ -38,7 +38,7 @@ export default function App() {
     const api = (window as any).electronAPI;
     if (!api) return;
 
-    api.on('shortcut', (action: string) => {
+    const unsubscribeShortcut = api.on('shortcut', (action: string) => {
       switch (action) {
         case 'add-chore':
           setCurrentPage('chores');
@@ -62,13 +62,13 @@ export default function App() {
     });
 
     // Обновление UI при добавлении воды через трей
-    api.on('water-added', () => {
+    const unsubscribeWaterAdded = api.on('water-added', () => {
       useAppStore.getState().loadTodayWater();
     });
 
     return () => {
-      api.removeAllListeners('shortcut');
-      api.removeAllListeners('water-added');
+      unsubscribeShortcut();
+      unsubscribeWaterAdded();
     };
   }, [setCurrentPage]);
 

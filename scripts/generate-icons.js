@@ -109,6 +109,30 @@ const png512 = createPNG(512);
 fs.writeFileSync(path.join(resourcesDir, 'icon@2x.png'), png512);
 console.log('✅ icon@2x.png (512x512) создан');
 
-console.log('\nДля .ico и .icns используйте:');
-console.log('  - online-convert.com/converter/png-to-ico');
-console.log('  - или: npx electron-icon-builder --input=resources/icon.png --output=resources/');
+
+// Windows ICO: ICO directory followed by the existing 256x256 PNG payload.
+const icoHeader = Buffer.alloc(6);
+icoHeader.writeUInt16LE(0, 0); // reserved
+icoHeader.writeUInt16LE(1, 2); // image type: icon
+icoHeader.writeUInt16LE(1, 4); // image count
+const icoEntry = Buffer.alloc(16);
+icoEntry[0] = 0; // 256px is encoded as 0
+icoEntry[1] = 0;
+icoEntry[2] = 0;
+icoEntry[3] = 0;
+icoEntry.writeUInt16LE(1, 4); // color planes
+icoEntry.writeUInt16LE(32, 6); // bits per pixel
+icoEntry.writeUInt32LE(png256.length, 8);
+icoEntry.writeUInt32LE(22, 12); // image starts after header and entry
+fs.writeFileSync(path.join(resourcesDir, 'icon.ico'), Buffer.concat([icoHeader, icoEntry, png256]));
+console.log('✅ icon.ico создан');
+
+// macOS ICNS: ic08 is the standard 256x256 PNG image chunk.
+const icnsChunk = Buffer.alloc(8);
+icnsChunk.write('ic08', 0, 4, 'ascii');
+icnsChunk.writeUInt32BE(png256.length + 8, 4);
+const icnsHeader = Buffer.alloc(8);
+icnsHeader.write('icns', 0, 4, 'ascii');
+icnsHeader.writeUInt32BE(png256.length + 16, 4);
+fs.writeFileSync(path.join(resourcesDir, 'icon.icns'), Buffer.concat([icnsHeader, icnsChunk, png256]));
+console.log('✅ icon.icns создан');

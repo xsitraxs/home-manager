@@ -6,11 +6,16 @@ export class NotificationManager {
   private mainWindow: BrowserWindow;
   private db: DatabaseManager;
   private intervalId: NodeJS.Timeout | null = null;
-  private lastNotificationDate: string = '';
+  private openWindow: () => void;
 
-  constructor(mainWindow: BrowserWindow, db: DatabaseManager) {
+  constructor(mainWindow: BrowserWindow, db: DatabaseManager, openWindow: () => void) {
     this.mainWindow = mainWindow;
     this.db = db;
+    this.openWindow = openWindow;
+  }
+
+  setMainWindow(mainWindow: BrowserWindow): void {
+    this.mainWindow = mainWindow;
   }
 
   // Запуск проверки уведомлений
@@ -32,16 +37,18 @@ export class NotificationManager {
   // Безопасный parseInt
   private safeInt(value: string | undefined, fallback: number): number {
     if (!value) return fallback;
-    const n = parseInt(value, 10);
+    if (!/^\d+$/.test(value)) return fallback;
+    const n = Number(value);
     return Number.isFinite(n) ? n : fallback;
   }
 
   private check(): void {
     const settings = this.db.getSettings();
-    const intervalMinutes = this.safeInt(settings.water_reminder_interval_minutes, 60);
-    const startHour = this.safeInt(settings.water_reminder_start_hour, 8);
-    const endHour = this.safeInt(settings.water_reminder_end_hour, 22);
-    const goalMl = this.safeInt(settings.water_goal_ml, 2000);
+    const intervalMinutes = Math.min(180, Math.max(15, this.safeInt(settings.water_reminder_interval_minutes, 60)));
+    const startHour = Math.min(23, Math.max(0, this.safeInt(settings.water_reminder_start_hour, 8)));
+    const endHour = Math.min(23, Math.max(0, this.safeInt(settings.water_reminder_end_hour, 22)));
+    const goalMl = Math.min(5000, Math.max(500, this.safeInt(settings.water_goal_ml, 2000)));
+    if (startHour === endHour) return;
 
     const now = new Date();
     const currentHour = now.getHours();
@@ -51,20 +58,21 @@ export class NotificationManager {
     const today = `${y}-${m}-${d}`;
 
     // Проверяем, в рабочем ли мы интервале
-    if (currentHour < startHour || currentHour >= endHour) {
-      return;
-    }
+    const inReminderWindow = startHour < endHour
+      ? currentHour >= startHour && currentHour < endHour
+      : currentHour >= startHour || currentHour < endHour;
+    if (!inReminderWindow) return;
 
     // Проверяем, не выполнена ли уже норма
     const todayWater = this.db.getTodayWater();
     if (todayWater >= goalMl) {
       // Норма выполнена — не беспокоим до следующего дня
-      if (this.lastNotificationDate !== today) {
+      if (this.db.getSetting('last_goal_notification_date') !== today) {
         this.sendNotification(
           'Поздравляем!',
           `Вы выполнили дневную норму воды: ${todayWater} из ${goalMl} мл`
         );
-        this.lastNotificationDate = today;
+        this.db.setSetting('last_goal_notification_date', today);
       }
       return;
     }
@@ -104,6 +112,7 @@ export class NotificationManager {
       notification.show();
 
       notification.on('click', () => {
+        if (this.mainWindow.isDestroyed()) this.openWindow();
         this.mainWindow.show();
         this.mainWindow.focus();
       });

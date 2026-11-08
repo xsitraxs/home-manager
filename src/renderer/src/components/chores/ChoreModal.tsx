@@ -10,7 +10,7 @@ interface ChoreModalProps {
 
 // Модальное окно добавления/редактирования дела
 export function ChoreModal({ isOpen, onClose, chore }: ChoreModalProps) {
-  const { addChore, updateChore, members } = useAppStore();
+  const { addChore, updateChore, members, chores } = useAppStore();
   const [title, setTitle] = useState('');
   const [frequencyDays, setFrequencyDays] = useState(1);
   const [assignedTo, setAssignedTo] = useState<number | null>(null);
@@ -66,9 +66,13 @@ export function ChoreModal({ isOpen, onClose, chore }: ChoreModalProps) {
 
   const getRotatedMember = (): number | null => {
     if (members.length === 0) return null;
-    const maxId = Math.max(...members.map((m) => m.id));
-    const nextIdx = members.findIndex((m) => m.id === maxId) + 1;
-    return members[nextIdx % members.length].id;
+    const orderedMembers = [...members].sort((a, b) => a.id - b.id);
+    const latestAssignedChore = chores
+      .filter((item) => item.assigned_to !== null)
+      .reduce((latest, item) => item.id > latest.id ? item : latest, { id: -1, assigned_to: null as number | null });
+    if (latestAssignedChore.assigned_to === null) return orderedMembers[0].id;
+    const latestIndex = orderedMembers.findIndex((member) => member.id === latestAssignedChore.assigned_to);
+    return orderedMembers[(latestIndex + 1 + orderedMembers.length) % orderedMembers.length].id;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {

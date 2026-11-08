@@ -1,5 +1,6 @@
 import { app, BrowserWindow, ipcMain, Notification, Tray, Menu, nativeImage, globalShortcut, session, crashReporter } from 'electron';
 import path from 'path';
+import { pathToFileURL } from 'url';
 import { autoUpdater } from 'electron-updater';
 import { DatabaseManager } from './database';
 import { TrayManager } from './tray';
@@ -10,6 +11,7 @@ let mainWindow: BrowserWindow | null = null;
 let trayManager: TrayManager | null = null;
 let notificationManager: NotificationManager | null = null;
 let isQuitting = false;
+let cspRegistered = false;
 const db = new DatabaseManager();
 
 // Crash reporting — локально в crashDumps
@@ -49,8 +51,10 @@ function createWindow(): void {
     backgroundColor: '#1a1a2e',
   });
 
-  // Content Security Policy — dev и prod
-  session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+  // Content Security Policy — register once even if macOS recreates the window.
+  if (!cspRegistered) {
+    cspRegistered = true;
+    session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
     const isDev = process.env.NODE_ENV === 'development';
 
     // Dev: разрешаем unsafe-eval (Vite HMR) + localhost (HMR WebSocket)
@@ -65,16 +69,15 @@ function createWindow(): void {
         'Content-Security-Policy': [csp],
       },
     });
-  });
+    });
+  }
 
-  // Ограничиваем навигацию
+  // Only allow the exact app document as a top-level navigation target.
+  const allowedNavigation = process.env.NODE_ENV === 'development'
+    ? 'http://localhost:5173/'
+    : pathToFileURL(path.resolve(__dirname, '../renderer/index.html')).href;
   mainWindow.webContents.on('will-navigate', (event, url) => {
-    const parsedUrl = new URL(url);
-    if (process.env.NODE_ENV === 'development') {
-      if (parsedUrl.hostname !== 'localhost') event.preventDefault();
-    } else {
-      if (parsedUrl.protocol !== 'file:') event.preventDefault();
-    }
+    if (url !== allowedNavigation) event.preventDefault();
   });
 
   mainWindow.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
@@ -86,6 +89,14 @@ function createWindow(): void {
   } else {
     mainWindow.loadFile(path.join(__dirname, '../renderer/index.html'));
   }
+
+  trayManager?.setMainWindow(mainWindow);
+  notificationManager?.setMainWindow(mainWindow);
+
+  const closingWindow = mainWindow;
+  mainWindow.on('closed', () => {
+    if (mainWindow === closingWindow) mainWindow = null;
+  });
 
   mainWindow.on('close', (event) => {
     const settings = db.getSettings();
@@ -100,12 +111,12 @@ function createWindow(): void {
 // ========== TRAY / УВЕДОМЛЕНИЯ ==========
 
 function initTray(): void {
-  trayManager = new TrayManager(mainWindow!, db);
+  trayManager = new TrayManager(mainWindow!, db, createWindow);
   trayManager.createTray();
 }
 
 function initNotifications(): void {
-  notificationManager = new NotificationManager(mainWindow!, db);
+  notificationManager = new NotificationManager(mainWindow!, db, createWindow);
   notificationManager.start();
 }
 
@@ -177,7 +188,7 @@ function setupIPC(): void {
   });
 
   ipcMain.handle('update-chore-order', (_, orders: unknown) => {
-    if (!Array.isArray(orders)) throw new Error('Expected array');
+    if (!Array.isArray(orders) || orders.length > 1000) throw new Error('Expected an array of at most 1000 items');
     return db.updateChoreOrder(
       orders.map((o: any) => ({
         id: validateId(o.id),
@@ -213,13 +224,30 @@ function setupIPC(): void {
   const ALLOWED_SETTINGS = new Set([
     'water_goal_ml', 'water_reminder_interval_minutes',
     'water_reminder_start_hour', 'water_reminder_end_hour',
-    'theme', 'minimizeToTray', 'autoStart', 'last_water_notification',
+    'theme', 'minimizeToTray', 'autoStart',
   ]);
 
   ipcMain.handle('set-setting', (_, key: unknown, value: unknown) => {
     const validKey = validateString(key, 50);
     if (!ALLOWED_SETTINGS.has(validKey)) throw new Error(`Setting "${validKey}" not allowed`);
-    return db.setSetting(validKey, validateString(value, 200));
+    let safeValue: string;
+    switch (validKey) {
+      case 'water_goal_ml': safeValue = String(validateInteger(value, 500, 5000)); break;
+      case 'water_reminder_interval_minutes': safeValue = String(validateInteger(value, 15, 180)); break;
+      case 'water_reminder_start_hour':
+      case 'water_reminder_end_hour': safeValue = String(validateInteger(value, 0, 23)); break;
+      case 'theme':
+        if (value !== 'dark' && value !== 'light') throw new Error('Invalid theme');
+        safeValue = value;
+        break;
+      case 'minimizeToTray':
+      case 'autoStart':
+        if (value !== 'true' && value !== 'false') throw new Error('Expected boolean string');
+        safeValue = value;
+        break;
+      default: throw new Error(`Setting "${validKey}" not allowed`);
+    }
+    return db.setSetting(validKey, safeValue);
   });
 
   ipcMain.handle('update-tray-icon', (_, progress: unknown) => {
@@ -271,10 +299,13 @@ if (!gotLock) {
   });
 
   app.on('second-instance', () => {
-    if (mainWindow) {
-      if (mainWindow.isMinimized()) mainWindow.restore();
-      mainWindow.focus();
+    if (!mainWindow || mainWindow.isDestroyed()) {
+      createWindow();
+      return;
     }
+    if (mainWindow.isMinimized()) mainWindow.restore();
+    if (!mainWindow.isVisible()) mainWindow.show();
+    mainWindow.focus();
   });
 
   app.on('window-all-closed', () => {

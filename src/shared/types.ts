@@ -52,6 +52,14 @@ export interface WaterStats {
   daily: { date: string; total_ml: number }[];
 }
 
+// Format a calendar date in local time (ISO strings use UTC and can shift the day).
+export function localDateKey(date: Date = new Date()): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 // Валидация (общая для main и renderer)
 export function validateString(value: unknown, maxLength: number = 100): string {
   if (typeof value !== 'string') throw new Error('Expected string');
